@@ -121,49 +121,58 @@ public class CalendarFragment extends Fragment {
      * 🌟 核心方法：從 SQL Server 撈取醫療紀錄(Medical)與花費紀錄(Costs)作為行程
      */
     private void fetchAllEventsFromDB() {
-        if (currentUserId == -1) return;
+        if (currentUserId == -1) {
+            android.util.Log.e("CalendarDebug", "UserID 為空，請檢查登入狀態");
+            return;
+        }
 
         new Thread(() -> {
             List<EventModel> tempEvents = new ArrayList<>();
             try (Connection conn = ConnectionHelper.getConnection()) {
-                // 1. 撈取醫療紀錄 (關聯 Pets 表獲取名字)
-                String medicalSql = "SELECT m.Date, p.PetName, m.Category, m.Dascription " +
-                        "FROM Medical m JOIN Pets p ON m.PetID = p.PetID " +
-                        "WHERE p.UserID = ? ORDER BY m.Date DESC";
-                PreparedStatement pstmt1 = conn.prepareStatement(medicalSql);
-                pstmt1.setInt(1, currentUserId);
-                ResultSet rs1 = pstmt1.executeQuery();
-                while (rs1.next()) {
-                    // 將 SQL Date 轉為 yyyy/M/d 格式串
-                    String date = rs1.getString("Date").replace("-", "/");
-                    tempEvents.add(new EventModel(date, rs1.getString("PetName"),
-                            rs1.getString("Category") + ": " + rs1.getString("Dascription"),
-                            R.drawable.ic_pill, false, "09:00"));
+                if (conn == null) {
+                    android.util.Log.e("CalendarDebug", "資料庫連線失敗");
+                    return;
                 }
 
-                // 2. 撈取花費紀錄
-                String costSql = "SELECT c.Date, p.PetName, c.Category, c.Amount " +
-                        "FROM Costs c JOIN Pets p ON c.PetID = p.PetID " +
-                        "WHERE p.UserID = ? ORDER BY c.Date DESC";
-                PreparedStatement pstmt2 = conn.prepareStatement(costSql);
-                pstmt2.setInt(1, currentUserId);
-                ResultSet rs2 = pstmt2.executeQuery();
+                // 1. 抓取一般行程 (Events)
+                // 注意：EvenDate, EvenTime, Title
+                String sql1 = "SELECT e.EventDate, p.PetName, e.Title, e.EventTime " +
+                        "FROM Events e JOIN Pets p ON e.PetID = p.PetID WHERE p.UserID = ?";
+                PreparedStatement ps1 = conn.prepareStatement(sql1);
+                ps1.setInt(1, currentUserId);
+                ResultSet rs1 = ps1.executeQuery();
+                while (rs1.next()) {
+                    String d = rs1.getString("EventDate").replace("-", "/"); // 轉為 yyyy/MM/dd
+                    tempEvents.add(new EventModel(d, rs1.getString("PetName"), "📅 " + rs1.getString("Title"), R.drawable.ic_record, false, rs1.getString("EventTime")));
+                }
+
+                // 2. 抓取醫療紀錄 (Medical)
+                // 注意：Date, Category, Description (確認拼字是 e 還是 a)
+                String sql2 = "SELECT m.Date, p.PetName, m.Category, m.Description " +
+                        "FROM Medical m JOIN Pets p ON m.PetID = p.PetID WHERE p.UserID = ?";
+                PreparedStatement ps2 = conn.prepareStatement(sql2);
+                ps2.setInt(1, currentUserId);
+                ResultSet rs2 = ps2.executeQuery();
                 while (rs2.next()) {
-                    String date = rs2.getString("Date").replace("-", "/");
-                    tempEvents.add(new EventModel(date, rs2.getString("PetName"),
-                            "支出: " + rs2.getString("Category") + " $" + rs2.getFloat("Amount"),
-                            R.drawable.ic_record, false, "12:00"));
+                    String d = rs2.getString("Date").replace("-", "/");
+                    tempEvents.add(new EventModel(d, rs2.getString("PetName"), "🏥 " + rs2.getString("Category") + ": " + rs2.getString("Description"), R.drawable.ic_pill, false, "醫療"));
                 }
 
                 allDbEvents = tempEvents;
+                android.util.Log.d("CalendarDebug", "總共抓到: " + allDbEvents.size() + " 筆資料");
 
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         refreshCalendarDecorators();
-                        showTenDaysEvents(); // 預設顯示未來10天
+                        if (lastSelectedDate != null) {
+                            updateSingleDayEvents(lastSelectedDate);
+                        } else {
+                            showTenDaysEvents();
+                        }
                     });
                 }
             } catch (Exception e) {
+                android.util.Log.e("CalendarDebug", "SQL 錯誤: " + e.getMessage());
                 e.printStackTrace();
             }
         }).start();
@@ -178,6 +187,11 @@ public class CalendarFragment extends Fragment {
             }
         }
         adapter.updateList(filteredList);
+
+        System.out.println("DEBUG: 點擊日期=" + targetDate);
+        for (EventModel event : allDbEvents) {
+            System.out.println("DEBUG: 比較清單中的日期=" + event.getDate());
+        }
     }
 
     private void showTenDaysEvents() {
@@ -199,14 +213,19 @@ public class CalendarFragment extends Fragment {
     private void refreshCalendarDecorators() {
         eventDates.clear();
         for (EventModel event : allDbEvents) {
-            // 資料庫存的是 2026-04-28，所以用 "-" 切割
-            String[] parts = event.getDate().split("-");
-            if (parts.length == 3) {
-                int year = Integer.parseInt(parts[0]);
-                int month = Integer.parseInt(parts[1]);
-                int day = Integer.parseInt(parts[2]);
-                // 注意：某些 library 的 Month 是從 0 開始，MaterialCalendarView 通常是 1-12
-                eventDates.add(CalendarDay.from(year, month, day));
+            try {
+                // 因為你在 fetch 時已經 replace("-", "/") 了，這裡統一用 "/" 切割
+                String[] parts = event.getDate().split("/");
+                if (parts.length == 3) {
+                    int year = Integer.parseInt(parts[0]);
+                    int month = Integer.parseInt(parts[1]);
+                    int day = Integer.parseInt(parts[2]);
+
+                    // 這裡存入 HashSet，供 shouldDecorate 判斷
+                    eventDates.add(CalendarDay.from(year, month, day));
+                }
+            } catch (Exception e) {
+                android.util.Log.e("CalendarErr", "日期解析失敗: " + event.getDate());
             }
         }
         calendarView.removeDecorators();
@@ -214,7 +233,9 @@ public class CalendarFragment extends Fragment {
     }
 
     private String formatDate(CalendarDay date) {
-        return date.getYear() + "/" + date.getMonth() + "/" + date.getDay();
+        // 使用 %02d 確保月份和日期都是兩位數，例如 2026/05/01
+        return String.format(Locale.getDefault(), "%d/%02d/%02d",
+                date.getYear(), date.getMonth(), date.getDay());
     }
 
     public class EventDecorator implements DayViewDecorator {
