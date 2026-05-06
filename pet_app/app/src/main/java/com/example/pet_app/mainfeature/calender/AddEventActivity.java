@@ -1,7 +1,6 @@
 package com.example.pet_app.mainfeature.calender;
 
 import android.app.DatePickerDialog;
-import android.app.TimePickerDialog; // 🌟 新增時鐘選擇器套件
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -35,7 +34,6 @@ public class AddEventActivity extends AppCompatActivity {
     private int selectedPetId = -1; // 儲存選中的寵物 ID
     private List<PetSimpleModel> userPets = new ArrayList<>();
 
-    // 🌟 1. 補上宣告 tvEndDate 和 tvTimeRange
     private TextView tvPetNameInAdd, tvStartDate, tvEndDate, tvTimeRange;
     private EditText etEventContent;
     private String selectedCategory = "一般行程"; // 預設分類
@@ -50,56 +48,45 @@ public class AddEventActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
         currentUserId = prefs.getInt("UserID", -1);
 
-        // 🌟 2. 綁定所有 UI 元件
+        // 綁定 UI
         tvPetNameInAdd = findViewById(R.id.tv_pet_name_in_add);
         tvStartDate = findViewById(R.id.tv_start_date);
-        tvEndDate = findViewById(R.id.tv_end_date);       // 綁定結束日期
-        tvTimeRange = findViewById(R.id.tv_time_range);   // 綁定時間範圍
+        tvEndDate = findViewById(R.id.tv_end_date);
+        tvTimeRange = findViewById(R.id.tv_time_range);
         etEventContent = findViewById(R.id.et_event_content);
         Button btnSave = findViewById(R.id.btn_save);
         LinearLayout layoutPetSelector = findViewById(R.id.layout_pet_selector);
 
-        // 初始化日期與時間
-        Calendar c = Calendar.getInstance();
-        updateDateDisplay(tvStartDate, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
-        updateDateDisplay(tvEndDate, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
+        // 1. 初始化日期為今天
+        Calendar initCalendar = Calendar.getInstance();
+        updateDateDisplay(initCalendar.get(Calendar.YEAR), initCalendar.get(Calendar.MONTH), initCalendar.get(Calendar.DAY_OF_MONTH));
 
-        // 異步讀取該使用者的寵物名單
+        // 2. 異步讀取該使用者的寵物名單
         fetchUserPets();
 
         // 寵物選擇器
         layoutPetSelector.setOnClickListener(v -> showPetPopup(v));
 
-        // 🌟 開始日期選擇器
+        // 日期選擇器
+        // 開始日期選擇器
         tvStartDate.setOnClickListener(v -> {
-            new DatePickerDialog(this, (view, y, m, d) -> updateDateDisplay(tvStartDate, y, m, d),
-                    c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+            Calendar startCalendar = Calendar.getInstance();
+            new DatePickerDialog(this, (view, y, m, d) -> {
+                // 直接更新開始日期
+                tvStartDate.setText(String.format("%04d/%02d/%02d", y, (m + 1), d));
+            }, startCalendar.get(Calendar.YEAR), startCalendar.get(Calendar.MONTH), startCalendar.get(Calendar.DAY_OF_MONTH)).show();
         });
 
-        // 🌟 結束日期選擇器 (新增的耳朵)
+        // 結束日期選擇器
         tvEndDate.setOnClickListener(v -> {
-            new DatePickerDialog(this, (view, y, m, d) -> updateDateDisplay(tvEndDate, y, m, d),
-                    c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+            Calendar endCalendar = Calendar.getInstance();
+            new DatePickerDialog(this, (view, y, m, d) -> {
+                // 🌟 修正：這裡要更新的是 tvEndDate
+                tvEndDate.setText(String.format("%04d/%02d/%02d", y, (m + 1), d));
+            }, endCalendar.get(Calendar.YEAR), endCalendar.get(Calendar.MONTH), endCalendar.get(Calendar.DAY_OF_MONTH)).show();
         });
 
-        // 🌟 時間範圍選擇器：連續跳出兩個時鐘 (開始時間 -> 結束時間)
-        tvTimeRange.setOnClickListener(v -> {
-            int hour = c.get(Calendar.HOUR_OF_DAY);
-            int minute = c.get(Calendar.MINUTE);
-
-            // 第一個彈窗：選開始時間
-            new TimePickerDialog(this, (view1, startHour, startMinute) -> {
-
-                // 第二個彈窗：選結束時間
-                new TimePickerDialog(this, (view2, endHour, endMinute) -> {
-                    // 將兩個時間組合成 "00:00 - 00:00" 的格式
-                    String startTime = String.format("%02d:%02d", startHour, startMinute);
-                    String endTime = String.format("%02d:%02d", endHour, endMinute);
-                    tvTimeRange.setText(startTime + " - " + endTime);
-                }, startHour, startMinute, true).show(); // 結束時間預設為剛選的開始時間
-
-            }, hour, minute, true).show(); // true 表示使用 24 小時制
-        });
+        tvTimeRange.setOnClickListener(v -> showTimeRangePicker(tvTimeRange));
 
         // 儲存按鈕
         btnSave.setOnClickListener(v -> saveEventToDB());
@@ -113,9 +100,12 @@ public class AddEventActivity extends AppCompatActivity {
         });
     }
 
-    // 🌟 小修改：讓這個方法可以指定要更新哪個 TextView (開始或結束)
-    private void updateDateDisplay(TextView targetTextView, int y, int m, int d) {
-        targetTextView.setText(y + "/" + (m + 1) + "/" + d);
+    private void updateDateDisplay(int y, int m, int d) {
+        // 補零格式：2024/05/07
+        String date = String.format("%04d/%02d/%02d", y, (m + 1), d);
+        tvStartDate.setText(date);
+        // 如果你希望初始化時結束日期也跟著變今天：
+        tvEndDate.setText(date);
     }
 
     private void fetchUserPets() {
@@ -150,55 +140,73 @@ public class AddEventActivity extends AppCompatActivity {
         popup.show();
     }
 
+    private void showTimeRangePicker(TextView targetTextView) {
+        Calendar c = Calendar.getInstance();
+
+        // 第一步：選開始時間
+        new android.app.TimePickerDialog(this, (view, hourOfDay, minute) -> {
+            String startTime = String.format("%02d:%02d", hourOfDay, minute);
+
+            // 第二步：選結束時間
+            new android.app.TimePickerDialog(this, (view2, hourOfDay2, minute2) -> {
+                String endTime = String.format("%02d:%02d", hourOfDay2, minute2);
+
+                // 第三步：組合並顯示
+                targetTextView.setText(startTime + " - " + endTime);
+
+            }, hourOfDay, minute, true).show(); // 預設結束時間跟開始時間一樣，比較好選
+
+            Toast.makeText(this, "請選擇結束時間", Toast.LENGTH_SHORT).show();
+
+        }, c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), true).show();
+
+        Toast.makeText(this, "請選擇開始時間", Toast.LENGTH_SHORT).show();
+    }
+
     private void saveEventToDB() {
-        // 從畫面抓取輸入的資料
-        String content = etEventContent.getText().toString().trim(); // 行程內容 (對應 DB 的 Title)
-        String startDateStr = tvStartDate.getText().toString();      // 開始日期 (對應 DB 的 EvenDate)
-        String timeRangeStr = tvTimeRange.getText().toString();      // 時間範圍 (對應 DB 的 EvenTime)
+        String title = etEventContent.getText().toString().trim(); // 使用者輸入的內容
+        String startDate = tvStartDate.getText().toString();      // EvenDate 存這個
+        String endDate = ((TextView)findViewById(R.id.tv_end_date)).getText().toString();
+        String timeRange = ((TextView)findViewById(R.id.tv_time_range)).getText().toString(); // EvenTime 存這個
 
-        // 防呆檢查
-        if (selectedPetId == -1) {
-            Toast.makeText(this, "請選擇寵物", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (content.isEmpty()) {
-            Toast.makeText(this, "請輸入內容", Toast.LENGTH_SHORT).show();
+        if (selectedPetId == -1 || title.isEmpty() || startDate.contains("選擇")) {
+            Toast.makeText(this, "請填寫完整資訊", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 開啟背景執行緒連線資料庫
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-
-                // 🌟 修正後的 SQL 語法：完美對準 Events 資料表！
-                // 注意拼字：Events, EvenDate, EvenTime
-                // 🌟 請把原本那句 SQL 替換成下面這行（補上了 EventDate 跟 EventTime 的 t）
+                // 欄位：UserID, PetID, EvenDate, EvenTime, Title
                 String sql = "INSERT INTO Events (UserID, PetID, EventDate, EventTime, Title) VALUES (?, ?, ?, ?, ?)";
                 PreparedStatement pstmt = conn.prepareStatement(sql);
 
-                pstmt.setInt(1, currentUserId);   // 第 1 個問號：存入 UserID
-                pstmt.setInt(2, selectedPetId);   // 第 2 個問號：存入 PetID
+                pstmt.setInt(1, currentUserId);
+                pstmt.setInt(2, selectedPetId);
 
-                // 轉換日期格式 yyyy/M/d -> yyyy-MM-dd 以符合 SQL 規定
-                String dbDate = startDateStr.replace("/", "-");
-                pstmt.setString(3, dbDate);       // 第 3 個問號：存入 EvenDate
+                // EvenDate (Date 類型): 存開始日期，要把 / 換成 -
+                pstmt.setString(3, startDate.replace("/", "-"));
 
-                pstmt.setString(4, timeRangeStr); // 第 4 個問號：存入 EvenTime (例如 09:00 - 12:00)
-                pstmt.setString(5, content);      // 第 5 個問號：存入 Title (行程內容)
+                // EvenTime (nvarchar): 直接存 "09:00 - 11:00"
+                pstmt.setString(4, timeRange);
 
-                // 執行寫入動作！
+                // Title (nvarchar): 我們把標題跟日期範圍拼在一起，這樣顯示時才完整
+                // 例如: "帶去打疫苗 (2024/05/07 - 2024/05/08)"
+                String fullTitle = title;
+                if (!endDate.contains("選擇")) {
+                    fullTitle += " (" + startDate + " ~ " + endDate + ")";
+                }
+                pstmt.setString(5, fullTitle);
+
                 pstmt.executeUpdate();
 
-                // 成功後回到主畫面顯示提示並關閉頁面
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "行程儲存成功！", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "行程已同步至雲端", Toast.LENGTH_SHORT).show();
                     setResult(RESULT_OK);
                     finish();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                // 🌟 小撇步：把錯誤訊息印在畫面上，以後抓蟲更快！
-                runOnUiThread(() -> Toast.makeText(this, "儲存失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, "連線失敗，請稍後再試", Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
