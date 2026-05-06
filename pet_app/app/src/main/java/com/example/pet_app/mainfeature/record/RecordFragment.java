@@ -71,6 +71,7 @@ public class RecordFragment extends Fragment {
             if (selectedPetId == -1) return;
             Intent intent = new Intent(getActivity(), ChartManagementActivity.class);
             intent.putExtra("PET_ID", selectedPetId);
+            intent.putExtra("PET_NAME", tvPetName.getText().toString());
             startActivity(intent);
         });
 
@@ -79,6 +80,7 @@ public class RecordFragment extends Fragment {
             if (selectedPetId == -1) return;
             Intent intent = new Intent(getActivity(), MedicalListActivity.class);
             intent.putExtra("PET_ID", selectedPetId);
+            intent.putExtra("PET_NAME", tvPetName.getText().toString());
             startActivity(intent);
         });
 
