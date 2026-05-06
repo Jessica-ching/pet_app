@@ -83,9 +83,20 @@ public class FoodSelectionActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 6. AI 小幫手跳轉
+        // 6. AI 小幫手跳轉：將前面接收到的資料傳遞給 ChatActivity
         if (btnAICat != null) {
-            btnAICat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
+            btnAICat.setOnClickListener(v -> {
+                Intent intent = new Intent(this, ChatActivity.class);
+
+                // 🌟 關鍵：將上一頁傳來的 Bundle 直接轉傳給 ChatActivity
+                // 這樣 ChatActivity 就能拿到 petSpecies, petBirthday, petGender, isSterilized
+                Bundle extras = getIntent().getExtras();
+                if (extras != null) {
+                    intent.putExtras(extras);
+                }
+
+                startActivity(intent);
+            });
         }
 
         // 7. 下一步：攜帶所有資料去 PetStatusActivity
