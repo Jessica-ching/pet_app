@@ -1,98 +1,85 @@
-package com.example.pet_app.mainfeature.pet;
+package com.example.pet_app.mainfeature.pet; // 🌟 檢查點1：如果檔案在 chat 資料夾，請手動把 .pet 改成 .chat
 
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.example.pet_app.ConnectionHelper;
 import com.example.pet_app.R;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class AddCustomFoodActivity extends AppCompatActivity {
 
-    private int currentUserId = -1;
+    // 🌟 依照你寫的 XML 元件宣告變數
+    private EditText etFoodName, etFoodCals;
+    private int selectedPetId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        // 🌟 檢查點2：這裡要對應你剛才貼的那份 XML 的檔名
         setContentView(R.layout.activity_add_custom_food);
 
-        // 取得當前 UserID (用於關聯是誰新增的食物)
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
-        currentUserId = prefs.getInt("UserID", -1);
+        // 接收傳過來的 ID
+        selectedPetId = getIntent().getIntExtra("PET_ID", -1);
 
-        EditText etName = findViewById(R.id.et_custom_food_name);
-        EditText etCalorie = findViewById(R.id.et_custom_food_calories);
+        // 🌟 檢查點3：這裡的 ID 必須跟你 XML 裡的 android:id 完美一致
+        etFoodName = findViewById(R.id.et_custom_food_name);
+        etFoodCals = findViewById(R.id.et_custom_food_calories);
         Button btnSave = findViewById(R.id.btn_save_custom_food);
+        ImageButton btnBack = findViewById(R.id.btn_back);
 
-        btnSave.setOnClickListener(v -> {
-            String name = etName.getText().toString().trim();
-            String calorieStr = etCalorie.getText().toString().trim();
+        // 返回鍵功能
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
 
-            if (name.isEmpty() || calorieStr.isEmpty()) {
-                Toast.makeText(this, "請完整輸入內容", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (currentUserId == -1) {
-                Toast.makeText(this, "請先登入帳號", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // --- 修改：改為儲存到 MSSQL ---
-            saveFoodToDB(name, calorieStr);
-        });
-
-        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        // 儲存功能
+        btnSave.setOnClickListener(v -> saveToDB());
     }
 
-    // 🌟 核心方法：儲存到 MSSQL 資料庫
-    private void saveFoodToDB(String name, String cal) {
+    private void saveToDB() {
+        String name = etFoodName.getText().toString().trim();
+        String calsPerGramStr = etFoodCals.getText().toString().trim();
+
+        if (name.isEmpty() || calsPerGramStr.isEmpty()) {
+            Toast.makeText(this, "名稱或熱量不能空白喔！", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 取得使用者輸入的「每公克熱量」
+        float calsPerGram = Float.parseFloat(calsPerGramStr);
+
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-                // 假設你的 Food 資料表欄位為：FoodName, CaloriesPer100g, UserID
-                // 這樣才能區分這是哪個使用者的私藏食譜
-                String sql = "INSERT INTO Food (FoodName, CaloriesPer100g, UserID) VALUES (?, ?, ?)";
+                // 🌟 關鍵修正：這裡要存入 Snacks 表（菜單），而不是 DailyFood（紀錄）
+                // 根據你的資料庫結構：Name (名稱), Calories (熱量), Gram (基準公克)
+                String sql = "INSERT INTO Snacks (Name, Calories, Gram) VALUES (?, ?, ?)";
                 PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, name);
-                pstmt.setFloat(2, Float.parseFloat(cal));
-                pstmt.setInt(3, currentUserId);
+
+                pstmt.setString(1, name);           // 食物名稱
+                pstmt.setFloat(2, calsPerGram);     // 存入每公克的大卡
+                pstmt.setFloat(3, 1.0f);            // 基準公克直接設為 1.0 (因為你是輸入每公克)
 
                 pstmt.executeUpdate();
 
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "自定義食物已儲存至雲端", Toast.LENGTH_SHORT).show();
-
-                    // 回傳結果給上一個頁面 (可能是 FeedingActivity)
-                    Intent resultIntent = new Intent();
-                    resultIntent.putExtra("FOOD_NAME", name);
-                    resultIntent.putExtra("FOOD_CALORIE", Integer.parseInt(cal));
-                    setResult(RESULT_OK, resultIntent);
-
+                    Toast.makeText(this, "成功將「" + name + "」加入食物清單！", Toast.LENGTH_SHORT).show();
+                    // 儲存完就關閉，回到「新增額外進食」頁面時，選單就會抓到這筆新資料
                     finish();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "儲存失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, "儲存至清單失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         }).start();
     }

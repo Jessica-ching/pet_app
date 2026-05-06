@@ -2,14 +2,10 @@ package com.example.pet_app.mainfeature.record;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -23,94 +19,108 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MedicalListActivity extends AppCompatActivity {
+
+    private RecyclerView rvMedicalList;
     private MedicalAdapter adapter;
-    private int selectedPetId;
-    private String petName;
-    private List<MedicalModel> medicalRecords = new ArrayList<>();
+    private List<MedicalModel> recordList = new ArrayList<>();
+
+    // 🌟 宣告標頭元件變數
+    private TextView tvPetNameHeader;
+    private int selectedPetId = -1;
+    private String selectedPetName; // 🌟 宣告存名字的變數
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_medical_list);
 
-        // 1. 取得傳過來的 ID 與名稱
+        // 1. 🌟 關鍵接收：同時接收上一頁傳來的 ID 與 名字
         selectedPetId = getIntent().getIntExtra("PET_ID", -1);
-        petName = getIntent().getStringExtra("PET_NAME");
+        selectedPetName = getIntent().getStringExtra("PET_NAME"); // 🌟 接收「小黑」名字
 
-        TextView tvName = findViewById(R.id.tv_pet_name);
-        tvName.setText(petName);
+        // 2. 初始化元件
+        rvMedicalList = findViewById(R.id.rv_medical_records);
+        tvPetNameHeader = findViewById(R.id.tv_pet_name); // 🌟 綁定標頭的 TextView
 
-        // 返回按鈕
-        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+        // 3. 🌟 關鍵顯示：把「小花」蓋成「小黑」
+        if (tvPetNameHeader != null && selectedPetName != null) {
+            tvPetNameHeader.setText(selectedPetName); // 🌟 設定 correct Name
+        }
 
-        // 加入按鈕 (跳轉到新增醫療紀錄頁面)
-        findViewById(R.id.btn_add_medical).setOnClickListener(v -> {
-            Intent intent = new Intent(this, MedicalAddActivity.class);
-            intent.putExtra("PET_ID", selectedPetId);
-            intent.putExtra("PET_NAME", petName);
-            startActivity(intent);
-        });
+        // --- 以下邏輯不變，修正轉檔問題即可 ---
 
-        // 設定 RecyclerView
-        RecyclerView rv = findViewById(R.id.rv_medical_records);
-        rv.setLayoutManager(new LinearLayoutManager(this));
+        if (rvMedicalList != null) {
+            rvMedicalList.setLayoutManager(new LinearLayoutManager(this));
+        }
 
-        // 先給空清單
-        adapter = new MedicalAdapter(medicalRecords);
-        rv.setAdapter(adapter);
+        ImageButton btnBack = findViewById(R.id.btn_back);
+        if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        // 4. 「加入」按鈕
+        TextView btnAddMedical = findViewById(R.id.btn_add_medical);
+        if (btnAddMedical != null) {
+            btnAddMedical.setOnClickListener(v -> {
+                // 跳轉到新增頁面
+                Intent intent = new Intent(MedicalListActivity.this, MedicalAddActivity.class);
+                intent.putExtra("PET_ID", selectedPetId);
+
+                // 🌟 關鍵傳送：把「小黑」這個名字繼續傳給下一頁 (圖三)
+                intent.putExtra("PET_NAME", selectedPetName);
+
+                startActivity(intent);
+            });
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次回到頁面都重新從資料庫抓取最新資料
-        loadMedicalRecords();
+        fetchMedicalRecords();
     }
 
-    // 🌟 核心：從 MSSQL 抓取資料
-    private void loadMedicalRecords() {
+    private void fetchMedicalRecords() {
         if (selectedPetId == -1) return;
 
         new Thread(() -> {
             List<MedicalModel> tempList = new ArrayList<>();
             try (Connection conn = ConnectionHelper.getConnection()) {
-                // 根據 PetID 查詢紀錄，按日期降序排列 (最新的在上面)
-                String sql = "SELECT Category, Date, Dascription FROM Medical WHERE PetID = ? ORDER BY Date DESC";
+                String sql = "SELECT Date, Category, Description FROM Medical WHERE PetID = ? ORDER BY Date DESC";
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 pstmt.setInt(1, selectedPetId);
                 ResultSet rs = pstmt.executeQuery();
 
                 while (rs.next()) {
-                    // 將資料庫資料封裝進 Model (假設你的 MedicalModel 建構子是這三個欄位)
-                    // Category 當標題，Date 當日期，Dascription 當內容
-                    tempList.add(new MedicalModel(
-                            rs.getString("Category"),
-                            rs.getString("Date"),
-                            rs.getString("Dascription")
-                    ));
+                    String dbDate = rs.getString("Date");
+                    String category = rs.getString("Category");
+                    String desc = rs.getString("Description");
+
+                    String displayDate = dbDate;
+                    try {
+                        if (dbDate != null && dbDate.contains("-")) {
+                            String[] parts = dbDate.split("-");
+                            int year = Integer.parseInt(parts[0]) - 1911;
+                            int month = Integer.parseInt(parts[1]);
+                            int day = Integer.parseInt(parts[2]);
+                            displayDate = year + "/" + String.format("%02d", month) + "/" + String.format("%02d", day);
+                        }
+                    } catch (Exception e) {}
+
+                    String finalReason = (desc != null && !desc.trim().isEmpty()) ? desc : category;
+                    MedicalModel record = new MedicalModel(0, displayDate, "", finalReason);
+                    tempList.add(record);
                 }
+            } catch (Exception e) { e.printStackTrace(); }
 
-                runOnUiThread(() -> {
-                    medicalRecords.clear();
-                    medicalRecords.addAll(tempList);
+            runOnUiThread(() -> {
+                recordList.clear();
+                recordList.addAll(tempList);
+                if (adapter == null) {
+                    adapter = new MedicalAdapter(recordList);
+                    if (rvMedicalList != null) rvMedicalList.setAdapter(adapter);
+                } else {
                     adapter.notifyDataSetChanged();
-
-                    if (medicalRecords.isEmpty()) {
-                        Toast.makeText(this, "尚無醫療紀錄", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "讀取紀錄失敗", Toast.LENGTH_SHORT).show());
-            }
+                }
+            });
         }).start();
     }
 }
