@@ -47,7 +47,11 @@ public class MedicalListActivity extends AppCompatActivity {
             tvPetNameHeader.setText(selectedPetName); // 🌟 設定 correct Name
         }
 
-        // --- 以下邏輯不變，修正轉檔問題即可 ---
+        adapter = new MedicalAdapter(recordList);
+        if (rvMedicalList != null) {
+            rvMedicalList.setLayoutManager(new LinearLayoutManager(this));
+            rvMedicalList.setAdapter(adapter);
+        }
 
         if (rvMedicalList != null) {
             rvMedicalList.setLayoutManager(new LinearLayoutManager(this));
@@ -84,6 +88,7 @@ public class MedicalListActivity extends AppCompatActivity {
         new Thread(() -> {
             List<MedicalModel> tempList = new ArrayList<>();
             try (Connection conn = ConnectionHelper.getConnection()) {
+                // ⚠️ 請再次確認資料表名稱與欄位名稱 (例如是否為 MedicalDate)
                 String sql = "SELECT Date, Category, Description FROM Medical WHERE PetID = ? ORDER BY Date DESC";
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 pstmt.setInt(1, selectedPetId);
@@ -94,33 +99,40 @@ public class MedicalListActivity extends AppCompatActivity {
                     String category = rs.getString("Category");
                     String desc = rs.getString("Description");
 
-                    String displayDate = dbDate;
-                    try {
-                        if (dbDate != null && dbDate.contains("-")) {
-                            String[] parts = dbDate.split("-");
-                            int year = Integer.parseInt(parts[0]) - 1911;
-                            int month = Integer.parseInt(parts[1]);
-                            int day = Integer.parseInt(parts[2]);
-                            displayDate = year + "/" + String.format("%02d", month) + "/" + String.format("%02d", day);
-                        }
-                    } catch (Exception e) {}
+                    // 🌟 優化日期轉換邏輯
+                    String displayDate = formatToMinguo(dbDate);
 
                     String finalReason = (desc != null && !desc.trim().isEmpty()) ? desc : category;
-                    MedicalModel record = new MedicalModel(0, displayDate, "", finalReason);
+
+                    // 這裡 MedicalModel 的建構子要對齊你的定義
+                    MedicalModel record = new MedicalModel(0, displayDate, category, finalReason);
                     tempList.add(record);
                 }
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
             runOnUiThread(() -> {
                 recordList.clear();
                 recordList.addAll(tempList);
-                if (adapter == null) {
-                    adapter = new MedicalAdapter(recordList);
-                    if (rvMedicalList != null) rvMedicalList.setAdapter(adapter);
-                } else {
-                    adapter.notifyDataSetChanged();
-                }
+                adapter.notifyDataSetChanged(); // 🌟 現在這裡直接 notify 即可
             });
         }).start();
+    }
+
+    private String formatToMinguo(String dbDate) {
+        if (dbDate == null || dbDate.isEmpty()) return "無日期";
+        try {
+            // 處理 yyyy-MM-dd 或 yyyy/MM/dd
+            String separator = dbDate.contains("-") ? "-" : "/";
+            String[] parts = dbDate.split(separator);
+            if (parts.length >= 3) {
+                int year = Integer.parseInt(parts[0]) - 1911;
+                return year + "/" + parts[1] + "/" + parts[2];
+            }
+        } catch (Exception e) {
+            return dbDate; // 失敗就回傳原始字串
+        }
+        return dbDate;
     }
 }
