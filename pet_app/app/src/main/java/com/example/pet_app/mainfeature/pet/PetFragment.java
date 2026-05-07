@@ -82,20 +82,19 @@ public class PetFragment extends Fragment {
 
         new Thread(() -> {
             List<PetModel> tempList = new ArrayList<>();
-            try (Connection conn = ConnectionHelper.getConnection()) {
-                String sql = "SELECT p.*, " +
-                        "(SELECT ISNULL(SUM(Calories), 0) FROM DailyFood WHERE PetID = p.PetID AND RecordDate = CAST(GETDATE() AS DATE)) as TodayCals " +
-                        "FROM Pets p WHERE p.UserID = ?";
-
-                PreparedStatement pstmt = conn.prepareStatement(sql);
+            try (Connection conn = ConnectionHelper.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement("SELECT p.*, " +
+                         "(SELECT ISNULL(SUM(Calories), 0) FROM DailyFood WHERE PetID = p.PetID AND RecordDate = CAST(GETDATE() AS DATE)) as TodayCals " +
+                         "FROM Pets p WHERE p.UserID = ?")) {
+                
                 pstmt.setInt(1, currentUserId);
-                ResultSet rs = pstmt.executeQuery();
-
-                while (rs.next()) {
-                    PetModel pet = new PetModel(rs.getInt("PetID"), rs.getString("PetName"), "", "", 0, rs.getFloat("Weight"));
-                    pet.setCurrentCals(rs.getInt("TodayCals"));
-                    pet.setGoalCals(rs.getInt("RecommendCalories"));
-                    tempList.add(pet);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        PetModel pet = new PetModel(rs.getInt("PetID"), rs.getString("PetName"), "", "", 0, rs.getFloat("Weight"));
+                        pet.setCurrentCals(rs.getInt("TodayCals"));
+                        pet.setGoalCals(rs.getInt("RecommendCalories"));
+                        tempList.add(pet);
+                    }
                 }
             } catch (Exception e) { e.printStackTrace(); }
 
