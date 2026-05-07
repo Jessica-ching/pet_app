@@ -51,27 +51,28 @@
         android:textSize="18sp" />
 
     <Button
-        android:id="@+id/btn_add_custom_food"
+        android:id="@+id/btn_save_feeding"
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_marginTop="15dp"
         android:backgroundTint="#F2B120"
-        android:text="加入其他食物"
+        android:text="儲存"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         app:cornerRadius="30dp" />
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="348dp"
         android:layout_weight="1" />
 
     <Button
-        android:id="@+id/btn_save_feeding"
+        android:id="@+id/btn_add_custom_food"
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:layout_marginTop="15dp"
         android:backgroundTint="#F2B120"
-        android:text="儲存"
+        android:text="加入其他食物"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         app:cornerRadius="30dp" />
