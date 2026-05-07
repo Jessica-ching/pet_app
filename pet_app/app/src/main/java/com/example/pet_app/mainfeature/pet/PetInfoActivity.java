@@ -1,5 +1,6 @@
 package com.example.pet_app.mainfeature.pet;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,7 +49,18 @@ public class PetInfoActivity extends AppCompatActivity {
 
         // 編輯按鈕
         findViewById(R.id.btn_edit_pet).setOnClickListener(v -> {
-            Toast.makeText(this, "開啟編輯模式 (請串接 EditPetActivity)", Toast.LENGTH_SHORT).show();
+            // 導向你的編輯頁面 (這裡假設你用 CreatePetInfoActivity 來兼任編輯功能)
+            Intent intent = new Intent(this, com.example.pet_app.login.CreatePetInfoActivity.class);
+
+            // 告訴下一頁：這是「編輯模式」
+            intent.putExtra("IS_EDIT_MODE", true);
+            intent.putExtra("PET_ID", selectedPetId);
+
+            // 如果你想讓使用者在下一頁直接看到舊資料，可以把現有的值也傳過去
+            intent.putExtra("EXISTING_NAME", tvTitleName.getText().toString());
+            intent.putExtra("EXISTING_WEIGHT", tvWeight.getText().toString());
+
+            startActivity(intent);
         });
     }
 
