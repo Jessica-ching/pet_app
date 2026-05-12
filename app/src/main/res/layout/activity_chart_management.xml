@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="#F9E9C5">
+
+    <ImageView
+        android:id="@+id/background_image"
+        android:layout_width="372dp"
+        android:layout_height="525dp"
+        android:layout_marginTop="400dp"
+        app:srcCompat="@drawable/into"
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:alpha="0.1"/>
+
+    <ImageButton
+        android:id="@+id/btn_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="73dp"
+        android:layout_marginBottom="83dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_back_arrow"
+        app:layout_constraintBottom_toTopOf="@+id/chart_card"
+        app:layout_constraintEnd_toStartOf="@+id/tv_toolbar_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+    android:id="@+id/tv_toolbar_title"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="寵物狀態管理"
+    android:textSize="20sp"
+    android:textStyle="bold"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_marginTop="20dp"/>
+
+    <LinearLayout
+        android:id="@+id/layout_tabs"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_white_rounded_capsule"
+        android:padding="4dp"
+        android:elevation="4dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_toolbar_title"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="25dp">
+
+        <ImageButton
+            android:id="@+id/iv_food_tab"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_food_bowl_orange"
+            android:background="@android:color/transparent"/>
+        <ImageButton
+            android:id="@+id/iv_water_tab"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_water_drop_blue"
+            android:background="@android:color/transparent"/>
+        <ImageButton
+            android:id="@+id/iv_weight_tab"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_weight_gray"
+            android:background="@android:color/transparent"/>
+        <ImageButton
+            android:id="@+id/iv_temp_tab"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_temperture_gray"
+            android:background="@android:color/transparent"/>
+    </LinearLayout>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/chart_card"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        app:cardCornerRadius="25dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/layout_tabs">
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/chart_view_management"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="12dp"/>
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:id="@+id/layout_date_range"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_white_rounded_capsule"
+        android:padding="20dp"
+        android:elevation="4dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/chart_card">
+
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_search" />
+
+        <TextView
+            android:id="@+id/tv_selected_date_range"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="點擊選擇日期區間"
+            android:textSize="20dp"
+            android:layout_marginStart="20dp"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

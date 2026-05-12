@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9E9C5"
+    tools:context=".login.CreatePetInfoActivity">
+
+    <ImageView
+        android:layout_width="450dp"
+        android:layout_height="450dp"
+        android:src="@drawable/bg_cat_watermark"
+        android:alpha="0.10"
+        android:scaleType="centerInside"
+        android:layout_marginBottom="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="40dp">
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:text="填寫寵物資訊"
+                android:textColor="#000000"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/ivPetPhoto"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="30dp"
+                android:background="@drawable/bg_rounded_input"
+                android:scaleType="centerInside"
+                android:src="@drawable/bg_cat_watermark"
+                android:padding="20dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvTitle" />
+
+            <TextView
+                android:id="@+id/tvPhotoHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="點擊上傳寵物照片"
+                android:textColor="#999999"
+                android:textSize="14sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ivPetPhoto" />
+
+            <EditText
+                android:id="@+id/etPetName"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginHorizontal="40dp"
+                android:layout_marginTop="30dp"
+                android:background="@drawable/bg_rounded_input"
+                android:elevation="2dp"
+                android:gravity="center"
+                android:hint="寵物姓名"
+                android:inputType="text"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvPhotoHint" />
+
+            <TextView
+                android:id="@+id/etPetType"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginHorizontal="40dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_rounded_input"
+                android:elevation="2dp"
+                android:gravity="center"
+                android:hint="選擇寵物類型"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etPetName" />
+
+            <EditText
+                android:id="@+id/etPetBirthday"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginHorizontal="40dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_rounded_input"
+                android:elevation="2dp"
+                android:focusable="false"
+                android:gravity="center"
+                android:hint="選擇寵物生日"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etPetType" />
+
+            <TextView
+                android:id="@+id/etPetGender"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginHorizontal="40dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_rounded_input"
+                android:elevation="2dp"
+                android:gravity="center"
+                android:hint="選擇寵物性別"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etPetBirthday" />
+
+            <TextView
+                android:id="@+id/etSpayed"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginHorizontal="40dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_rounded_input"
+                android:elevation="2dp"
+                android:gravity="center"
+                android:hint="是否已結紮"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etPetGender" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnNextStep"
+                android:layout_width="180dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="40dp"
+                android:background="@drawable/bg_rounded_button"
+                android:elevation="6dp"
+                android:text="下一步"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etSpayed" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

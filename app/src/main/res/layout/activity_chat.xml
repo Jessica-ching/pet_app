@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9E9C5">
+
+    <RelativeLayout
+        android:id="@+id/chatHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#E9C46A"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="30dp"    android:paddingBottom="15dp" app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_centerVertical="true"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="#000000" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="AI智能幫手"
+            android:textColor="#000000"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivCatHeader"
+            android:layout_width="55dp"
+            android:layout_height="55dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_ai_cat" />
+    </RelativeLayout>
+
+    <FrameLayout
+        android:id="@+id/chatContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/keywordSection"
+        app:layout_constraintTop_toBottomOf="@id/chatHeader">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvChat"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="16dp"
+            android:clipToPadding="false"
+            android:scrollbars="vertical" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/keywordSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintBottom_toTopOf="@id/inputSection">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="快速選擇關鍵字"
+            android:textColor="#666666"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"/>
+
+        <androidx.gridlayout.widget.GridLayout
+            android:id="@+id/keywordGridLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:columnCount="2"
+            app:alignmentMode="alignMargins">
+
+            <TextView
+                android:id="@+id/kw1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_columnWeight="1"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_rounded_input"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="💧 泌尿道保健"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/kw2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_columnWeight="1"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_rounded_input"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="👀 眼睛/淚痕"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/kw3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_columnWeight="1"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_rounded_input"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="🦴 關節強化"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/kw4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_columnWeight="1"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_rounded_input"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="🌿 腸胃敏感"
+                android:textColor="#333333" />
+        </androidx.gridlayout.widget.GridLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/inputSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            app:tint="#333333" />
+
+        <EditText
+            android:id="@+id/etChatInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_rounded_input"
+            android:hint="請輸入提問..."
+            android:padding="12dp"
+            android:textSize="16sp" />
+
+        <ImageButton
+            android:id="@+id/btnSend"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:background="@drawable/bg_rounded_button"
+            android:src="@android:drawable/ic_menu_send"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
