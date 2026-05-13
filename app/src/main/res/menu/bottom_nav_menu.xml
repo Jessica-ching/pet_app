@@ -2,23 +2,26 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_pet"
-        android:icon="@drawable/ic_pet"
+        android:icon="@drawable/ic_nav_pet"
         android:title="寵物" />
+
     <item
         android:id="@+id/nav_record"
-        android:icon="@drawable/ic_record"
+        android:icon="@drawable/ic_nav_health"
         android:title="健康" />
+
     <item
         android:id="@+id/nav_home"
-        android:icon="@drawable/ic_home"
+        android:icon="@drawable/ic_nav_home"
         android:title="首頁" />
+
     <item
         android:id="@+id/nav_calendar"
-        android:icon="@drawable/ic_calendar"
+        android:icon="@drawable/ic_nav_schedule"
         android:title="行程" />
+
     <item
         android:id="@+id/nav_settings"
-        android:icon="@drawable/ic_settings"
+        android:icon="@drawable/ic_ai_cat"
         android:title="AI幫手" />
-
 </menu>

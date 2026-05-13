@@ -60,10 +60,10 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            app:tint="#333333" />
+            android:id="@+id/btn_add_file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_add"  android:padding="8dp" />
 
         <EditText
             android:id="@+id/et_ai_input"

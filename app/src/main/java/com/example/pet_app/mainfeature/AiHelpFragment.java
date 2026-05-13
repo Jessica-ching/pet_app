@@ -1,5 +1,8 @@
 package com.example.pet_app.mainfeature;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -7,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -18,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.pet_app.ChatAdapter;
 import com.example.pet_app.ChatMessage;
+import com.example.pet_app.HomeActivity;
 import com.example.pet_app.R;
 
 import org.json.JSONObject;
@@ -40,22 +45,33 @@ public class AiHelpFragment extends Fragment {
     private ChatAdapter chatAdapter;
     private List<ChatMessage> messageList = new ArrayList<>();
 
-    private Uri selectedImageUri = null;
-    private ActivityResultLauncher<String> pickImageLauncher;
+    private Uri selectedUri = null;
 
-    // 後端筆電 IP，如果後端 IP 改變，只改這裡
+    private ActivityResultLauncher<Intent> photoLauncher;
+    private ActivityResultLauncher<Intent> fileLauncher;
+
     private static final String BACKEND_BASE_URL = "http://172.20.10.4:8000";
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        pickImageLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(),
-                uri -> {
-                    if (uri != null) {
-                        selectedImageUri = uri;
+        photoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        selectedUri = result.getData().getData();
                         Toast.makeText(requireContext(), "已選擇圖片，輸入問題後按送出", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+
+        fileLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        selectedUri = result.getData().getData();
+                        Toast.makeText(requireContext(), "已選擇檔案，輸入問題後按送出", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
@@ -63,7 +79,6 @@ public class AiHelpFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         View view = inflater.inflate(R.layout.fragment_ai_help, container, false);
 
         etInput = view.findViewById(R.id.et_ai_input);
@@ -74,13 +89,26 @@ public class AiHelpFragment extends Fragment {
         rvChat.setLayoutManager(new LinearLayoutManager(getContext()));
         rvChat.setAdapter(chatAdapter);
 
-        // 長按送出按鈕：選圖片
-        btnSend.setOnLongClickListener(v -> {
-            pickImageLauncher.launch("image/*");
-            return true;
-        });
+        // 🌟 綁定你的「+」號圖示按鈕
+        ImageView btnAdd = view.findViewById(R.id.btn_add_file);
+        if (btnAdd != null) {
+            btnAdd.setOnClickListener(v -> showUploadMenu());
+        }
 
-        // 點擊送出按鈕：送文字或文字+圖片
+        ImageView btnBack = view.findViewById(R.id.btnBack);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> {
+                // 👇👇👇 換成這段「重新投胎大法」 👇👇👇
+                Intent intent = new Intent(requireActivity(), HomeActivity.class);
+                // 什麼 Flag 都不用加，直接啟動全新的首頁
+                startActivity(intent);
+
+                // 然後把現在這個被玩壞的舊首頁殺掉
+                requireActivity().finish();
+                // 👆👆👆 修改結束 👆👆👆
+            });
+        }
+
         btnSend.setOnClickListener(v -> {
             String question = etInput.getText().toString().trim();
 
@@ -89,27 +117,41 @@ public class AiHelpFragment extends Fragment {
                 return;
             }
 
-            if (selectedImageUri == null) {
-                Toast.makeText(requireContext(), "請先長按送出按鈕選擇圖片", Toast.LENGTH_SHORT).show();
-                return;
+            if (selectedUri == null) {
+                addMessage(new ChatMessage(question, true));
+                askAiAssistant(question);
+            } else {
+                Toast.makeText(requireContext(), "準備送出附檔問題", Toast.LENGTH_SHORT).show();
+                addMessage(new ChatMessage(question + "\n[已附上檔案]", true));
+                askAiAssistantWithImage(question, selectedUri);
+                selectedUri = null;
             }
-
-            Toast.makeText(requireContext(), "準備送出圖片問題", Toast.LENGTH_SHORT).show();
-
-            addMessage(new ChatMessage(question + "\n[已附上圖片]", true));
-
-            askAiAssistantWithImage(question, selectedImageUri);
-
-            selectedImageUri = null;
             etInput.setText("");
         });
 
         return view;
     }
 
+    private void showUploadMenu() {
+        String[] options = {"上傳照片", "上傳檔案"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("請選擇要傳送的內容");
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) {
+                Intent intent = new Intent(Intent.ACTION_PICK);
+                intent.setType("image/*");
+                photoLauncher.launch(intent);
+            } else if (which == 1) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
+                fileLauncher.launch(intent);
+            }
+        });
+        builder.show();
+    }
+
     private void addMessage(ChatMessage message) {
         if (!isAdded()) return;
-
         requireActivity().runOnUiThread(() -> {
             messageList.add(message);
             chatAdapter.notifyItemInserted(messageList.size() - 1);
@@ -117,18 +159,15 @@ public class AiHelpFragment extends Fragment {
         });
     }
 
-    // 純文字版：POST /api/assistant
+    // 純文字版 API
     private void askAiAssistant(String question) {
         new Thread(() -> {
             HttpURLConnection conn = null;
-
             try {
                 URL url = new URL(BACKEND_BASE_URL + "/api/assistant");
-
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(60000);
                 conn.setDoOutput(true);
@@ -143,15 +182,7 @@ public class AiHelpFragment extends Fragment {
                 }
 
                 int responseCode = conn.getResponseCode();
-
-                InputStream responseStream;
-
-                if (responseCode >= 200 && responseCode < 300) {
-                    responseStream = conn.getInputStream();
-                } else {
-                    responseStream = conn.getErrorStream();
-                }
-
+                InputStream responseStream = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
                 String response = readStream(responseStream);
 
                 if (responseCode >= 200 && responseCode < 300) {
@@ -159,105 +190,63 @@ public class AiHelpFragment extends Fragment {
                 } else {
                     addMessage(new ChatMessage("伺服器回應錯誤：" + responseCode + "\n" + response, false));
                 }
-
             } catch (Exception e) {
                 e.printStackTrace();
                 addMessage(new ChatMessage("連線失敗：" + e.getMessage(), false));
-
             } finally {
-                if (conn != null) {
-                    conn.disconnect();
-                }
+                if (conn != null) conn.disconnect();
             }
         }).start();
     }
 
-    // 圖片版：POST /api/assistant/image
+    // 圖片/檔案版 API
     private void askAiAssistantWithImage(String question, Uri imageUri) {
         new Thread(() -> {
             HttpURLConnection conn = null;
-
             try {
                 String boundary = "----PetAppBoundary" + System.currentTimeMillis();
-
                 URL url = new URL(BACKEND_BASE_URL + "/api/assistant/image");
-
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
-
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(60000);
-
                 conn.setDoOutput(true);
                 conn.setDoInput(true);
-
-                conn.setRequestProperty(
-                        "Content-Type",
-                        "multipart/form-data;boundary=" + boundary
-                );
+                conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
 
                 OutputStream outputStream = conn.getOutputStream();
+                PrintWriter writer = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"), true);
 
-                PrintWriter writer = new PrintWriter(
-                        new OutputStreamWriter(outputStream, "UTF-8"),
-                        true
-                );
-
-                // 1. 傳 question
                 writer.append("--").append(boundary).append("\r\n");
-                writer.append("Content-Disposition: form-data; name=\"question\"").append("\r\n");
-                writer.append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"question\"").append("\r\n\r\n");
                 writer.append(question).append("\r\n");
                 writer.flush();
 
-                // 2. 傳 image
                 String mimeType = requireContext().getContentResolver().getType(imageUri);
-
-                if (mimeType == null || mimeType.isEmpty()) {
-                    mimeType = "image/jpeg";
-                }
+                if (mimeType == null || mimeType.isEmpty()) mimeType = "image/jpeg";
 
                 writer.append("--").append(boundary).append("\r\n");
-                writer.append("Content-Disposition: form-data; name=\"image\"; filename=\"upload.jpg\"")
-                        .append("\r\n");
-                writer.append("Content-Type: ").append(mimeType).append("\r\n");
-                writer.append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"image\"; filename=\"upload.jpg\"").append("\r\n");
+                writer.append("Content-Type: ").append(mimeType).append("\r\n\r\n");
                 writer.flush();
 
-                InputStream imageInputStream = requireContext()
-                        .getContentResolver()
-                        .openInputStream(imageUri);
-
-                if (imageInputStream == null) {
-                    throw new Exception("圖片讀取失敗");
-                }
+                InputStream imageInputStream = requireContext().getContentResolver().openInputStream(imageUri);
+                if (imageInputStream == null) throw new Exception("圖片讀取失敗");
 
                 byte[] buffer = new byte[4096];
                 int bytesRead;
-
                 while ((bytesRead = imageInputStream.read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                 }
-
                 outputStream.flush();
                 imageInputStream.close();
 
-                writer.append("\r\n");
-                writer.append("--").append(boundary).append("--").append("\r\n");
+                writer.append("\r\n").append("--").append(boundary).append("--").append("\r\n");
                 writer.flush();
                 writer.close();
 
-                // 3. 讀取後端回應
                 int responseCode = conn.getResponseCode();
-
-                InputStream responseStream;
-
-                if (responseCode >= 200 && responseCode < 300) {
-                    responseStream = conn.getInputStream();
-                } else {
-                    responseStream = conn.getErrorStream();
-                }
-
+                InputStream responseStream = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
                 String response = readStream(responseStream);
 
                 if (responseCode >= 200 && responseCode < 300) {
@@ -265,28 +254,20 @@ public class AiHelpFragment extends Fragment {
                 } else {
                     addMessage(new ChatMessage("後端錯誤：" + responseCode + "\n" + response, false));
                 }
-
             } catch (Exception e) {
                 e.printStackTrace();
                 addMessage(new ChatMessage("圖片連線失敗：" + e.getMessage(), false));
-
             } finally {
-                if (conn != null) {
-                    conn.disconnect();
-                }
+                if (conn != null) conn.disconnect();
             }
         }).start();
     }
 
     private String readStream(InputStream inputStream) {
-        if (inputStream == null) {
-            return "";
-        }
-
+        if (inputStream == null) return "";
         Scanner scanner = new Scanner(inputStream).useDelimiter("\\A");
         String result = scanner.hasNext() ? scanner.next() : "";
         scanner.close();
-
         return result;
     }
 }
