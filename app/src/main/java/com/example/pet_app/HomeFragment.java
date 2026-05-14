@@ -84,6 +84,26 @@ public class HomeFragment extends Fragment {
             startActivity(intent);
         });
 
+        // --- 新增：處理鈴鐺點擊 ---
+        View btnNotification = view.findViewById(R.id.btn_notification);
+        if (btnNotification != null) {
+            btnNotification.setOnClickListener(v -> {
+                String[] options = {"設定餵食提醒", "設定門診提醒", "取消所有提醒"};
+
+                new android.app.AlertDialog.Builder(requireContext())
+                        .setTitle("通知設定")
+                        .setItems(options, (dialog, which) -> {
+                            if (which == 0 || which == 1) {
+                                showTimePickerDialog(options[which]);
+                            } else {
+                                Toast.makeText(getContext(), "提醒已關閉", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .show();
+            });
+        }
+        // --- 新增結束 ---
+
         checkStatusAndRefreshUI();
         return view;
     }
@@ -301,6 +321,25 @@ public class HomeFragment extends Fragment {
         lineChart.invalidate();
         lineChart.animateY(800);
     }
+
+    // --- 新增：彈出時間選擇器 ---
+    private void showTimePickerDialog(String title) {
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
+        int minute = calendar.get(java.util.Calendar.MINUTE);
+
+        android.app.TimePickerDialog timePickerDialog = new android.app.TimePickerDialog(requireContext(),
+                (view, selectedHour, selectedMinute) -> {
+                    String timeString = selectedHour + ":" + String.format("%02d", selectedMinute);
+                    Toast.makeText(requireContext(),
+                            title + " 已成功設定在 " + timeString,
+                            Toast.LENGTH_LONG).show();
+                }, hour, minute, true);
+
+        timePickerDialog.setTitle(title);
+        timePickerDialog.show();
+    }
+    // --- 新增結束 ---
 
     // 寵物簡單模型
     class PetModel {

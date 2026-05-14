@@ -153,7 +153,7 @@ public class ChatActivity extends AppCompatActivity {
                     petSpecies, petBirthday, petGender, sterilizedStatus, userInputText);
 
             String encodedText = java.net.URLEncoder.encode(fullPrompt, "UTF-8");
-            String url = "http://172.20.10.4:8000/ai_recommend?userInput=" + encodedText;
+            String url = "http://172.20.10.6:8000/ai_recommend?userInput=" + encodedText;
 
             Request request = new Request.Builder().url(url).build();
 

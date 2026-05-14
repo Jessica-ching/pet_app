@@ -18,6 +18,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.pet_app.AlarmHelper;
 import com.example.pet_app.ConnectionHelper;
 import com.example.pet_app.R;
 
@@ -88,6 +89,14 @@ public class AddEventActivity extends AppCompatActivity {
 
         tvTimeRange.setOnClickListener(v -> showTimeRangePicker(tvTimeRange));
 
+        // 如果是 Android 13 (API 33) 以上，必須手動請求通知權限
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                androidx.core.app.ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
         // 儲存按鈕
         btnSave.setOnClickListener(v -> saveEventToDB());
 
@@ -190,7 +199,6 @@ public class AddEventActivity extends AppCompatActivity {
                 pstmt.setString(4, timeRange);
 
                 // Title (nvarchar): 我們把標題跟日期範圍拼在一起，這樣顯示時才完整
-                // 例如: "帶去打疫苗 (2024/05/07 - 2024/05/08)"
                 String fullTitle = title;
                 if (!endDate.contains("選擇")) {
                     fullTitle += " (" + startDate + " ~ " + endDate + ")";
@@ -199,8 +207,37 @@ public class AddEventActivity extends AppCompatActivity {
 
                 pstmt.executeUpdate();
 
+                // ==========================================
+                // 🌟 新增：解析時間並設定手機推播鬧鐘
+                // ==========================================
+                try {
+                    // 1. 切割日期：把 "2024/05/07" 拆成 年, 月, 日
+                    String[] dateParts = startDate.split("/");
+                    int year = Integer.parseInt(dateParts[0]);
+                    int month = Integer.parseInt(dateParts[1]);
+                    int day = Integer.parseInt(dateParts[2]);
+
+                    // 2. 切割時間：把 "09:00 - 11:00" 拆出開始時間的 9 和 0
+                    int hour = 9;   // 如果沒選時間，預設早上 9 點提醒
+                    int minute = 0;
+                    if (timeRange.contains("-") && timeRange.contains(":")) {
+                        String startTimeStr = timeRange.split("-")[0].trim(); // 抓出 "09:00"
+                        String[] timeParts = startTimeStr.split(":");
+                        hour = Integer.parseInt(timeParts[0]);
+                        minute = Integer.parseInt(timeParts[1]);
+                    }
+
+                    // 3. 呼叫工具人排定通知！(用當下的時間毫秒當作鬧鐘 ID)
+                    int alarmId = (int) System.currentTimeMillis();
+                    AlarmHelper.scheduleEvent(AddEventActivity.this, alarmId, title, year, month, day, hour, minute);
+
+                } catch (Exception e) {
+                    e.printStackTrace(); // 如果日期格式有誤就略過不設鬧鐘，但資料還是會存入資料庫
+                }
+                // ==========================================
+
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "行程已同步至雲端", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "行程已儲存，並開啟推播提醒！", Toast.LENGTH_SHORT).show();
                     setResult(RESULT_OK);
                     finish();
                 });

@@ -96,11 +96,7 @@ public class HomeActivity extends AppCompatActivity {
         if (bottomNav != null) {
             bottomNav.setItemIconTintList(null);
             Menu menu = bottomNav.getMenu();
-            setEmojiIcon(menu, R.id.nav_pet, "\uD83D\uDC3E");
-            setEmojiIcon(menu, R.id.nav_record, "\uD83D\uDCDD");
-            setEmojiIcon(menu, R.id.nav_home, "\uD83C\uDFE0");
-            setEmojiIcon(menu, R.id.nav_calendar, "\uD83D\uDCC5");
-            setEmojiIcon(menu, R.id.nav_settings, "\uD83D\uDC7D");
+
 
             bottomNav.setOnItemSelectedListener(item -> {
                 Fragment selectedFragment = null;

@@ -50,7 +50,8 @@ public class AiHelpFragment extends Fragment {
     private ActivityResultLauncher<Intent> photoLauncher;
     private ActivityResultLauncher<Intent> fileLauncher;
 
-    private static final String BACKEND_BASE_URL = "http://172.20.10.4:8000";
+    // 🌟 核心修改：換成 Android 模擬器專用的本機端 IP
+    private static final String BACKEND_BASE_URL = "http://172.20.10.6:8000";
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
