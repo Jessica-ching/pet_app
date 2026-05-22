@@ -10,11 +10,16 @@ public class ConnectionHelper {
         // Azure 專用的連線字串格式
         // 1. 伺服器位址後加上 :1433
         // 2. ssl=request 確保加密通訊
-        String connUrl = "jdbc:jtds:sqlserver://192.168.43.55:1433;" +
+//        String connUrl = "jdbc:jtds:sqlserver://192.168.43.55:1433;" +
+//                "databaseName=PetDB;" +
+//                "user=petapp_admin@petlove;" + // 🌟 注意：Azure 有時需要 @伺服器名
+//                "password=groupH115;" +
+//                "ssl=request;"; // Azure 雲端通常強制要求加密
+        String connUrl = "jdbc:jtds:sqlserver://pet-grouph.database.windows.net:1433;" +
                 "databaseName=PetDB;" +
-                "user=petapp_admin@petlove;" + // 🌟 注意：Azure 有時需要 @伺服器名
+                "user=petapp_admin@pet-grouph;" + // Azure 有時需要 @伺服器名
                 "password=groupH115;" +
-                "ssl=request;"; // Azure 雲端通常強制要求加密
+                "ssl=request;";
 
         return DriverManager.getConnection(connUrl);
     }
