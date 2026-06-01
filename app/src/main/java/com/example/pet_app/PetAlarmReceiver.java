@@ -32,7 +32,7 @@ public class PetAlarmReceiver extends BroadcastReceiver {
             if (manager != null) manager.createNotificationChannel(channel);
         }
 
-        // 建立推播通知的外觀 (圖示我先用 Android 內建的星號，你可以換成你的 ic_nav_pet)
+        // 建立推播通知的外觀
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.btn_star_big_on)
                 .setContentTitle("🐾 寵物行程提醒")
@@ -44,5 +44,8 @@ public class PetAlarmReceiver extends BroadcastReceiver {
         if (manager != null) {
             manager.notify((int) System.currentTimeMillis(), builder.build());
         }
+
+        // 🚀 關鍵新增：讓郵差順便把這則行程，寫進我們首頁鈴鐺的暫存紀錄裡！
+        LocalNotificationHelper.addNotification(context, "【行程】" + eventTitle);
     }
 }
