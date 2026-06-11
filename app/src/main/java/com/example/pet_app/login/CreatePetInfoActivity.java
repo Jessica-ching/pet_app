@@ -38,6 +38,9 @@ public class CreatePetInfoActivity extends AppCompatActivity {
     private boolean isEditMode = false;
     private int petId = -1;
 
+    // 避免 WindowLeaked，追蹤目前開啟的 Dialog
+    private AlertDialog currentDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,13 +87,21 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         setupOtherPickers();
     }
 
+    @Override
+    protected void onDestroy() {
+        if (currentDialog != null && currentDialog.isShowing()) {
+            currentDialog.dismiss();
+        }
+        super.onDestroy();
+    }
+
     private void setupOtherPickers() {
         if (etPetType != null) {
             etPetType.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     String[] types = {"貓", "狗", "其他"};
-                    new AlertDialog.Builder(CreatePetInfoActivity.this)
+                    currentDialog = new AlertDialog.Builder(CreatePetInfoActivity.this)
                             .setTitle("選擇寵物類型")
                             .setItems(types, new DialogInterface.OnClickListener() {
                                 @Override
@@ -107,7 +118,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     String[] birthdayOptions = {"📅 選擇確切日期", "⏳ 輸入年齡推算 (幾歲幾個月)"};
-                    new AlertDialog.Builder(CreatePetInfoActivity.this)
+                    currentDialog = new AlertDialog.Builder(CreatePetInfoActivity.this)
                             .setTitle("請問您知道確切生日嗎？")
                             .setItems(birthdayOptions, new DialogInterface.OnClickListener() {
                                 @Override
@@ -125,7 +136,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     String[] genders = {"公", "母"};
-                    new AlertDialog.Builder(CreatePetInfoActivity.this)
+                    currentDialog = new AlertDialog.Builder(CreatePetInfoActivity.this)
                             .setTitle("選擇寵物性別")
                             .setItems(genders, new DialogInterface.OnClickListener() {
                                 @Override
@@ -142,7 +153,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     String[] options = {"是", "否"};
-                    new AlertDialog.Builder(CreatePetInfoActivity.this)
+                    currentDialog = new AlertDialog.Builder(CreatePetInfoActivity.this)
                             .setTitle("是否已結紮？")
                             .setItems(options, new DialogInterface.OnClickListener() {
                                 @Override
@@ -193,24 +204,25 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         new Thread(() -> {
             try (java.sql.Connection conn = com.example.pet_app.ConnectionHelper.getConnection()) {
                 String sql = "SELECT PetName, Species, Birthday, Gender, IsSterilized FROM Pets WHERE PetID = ?";
-                java.sql.PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, petId);
-                java.sql.ResultSet rs = pstmt.executeQuery();
+                try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, petId);
+                    try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            String name = rs.getString("PetName");
+                            String type = rs.getString("Species");
+                            String birthday = rs.getString("Birthday");
+                            String gender = rs.getString("Gender");
+                            boolean spayed = rs.getBoolean("IsSterilized");
 
-                if (rs.next()) {
-                    String name = rs.getString("PetName");
-                    String type = rs.getString("Species");
-                    String birthday = rs.getString("Birthday");
-                    String gender = rs.getString("Gender");
-                    boolean spayed = rs.getBoolean("IsSterilized");
-
-                    runOnUiThread(() -> {
-                        etPetName.setText(name);
-                        etPetType.setText(type);
-                        etPetBirthday.setText(birthday.replace("-", "/"));
-                        etPetGender.setText(gender);
-                        etSpayed.setText(spayed ? "是" : "否");
-                    });
+                            runOnUiThread(() -> {
+                                etPetName.setText(name);
+                                etPetType.setText(type);
+                                etPetBirthday.setText(birthday.replace("-", "/"));
+                                etPetGender.setText(gender);
+                                etSpayed.setText(spayed ? "是" : "否");
+                            });
+                        }
+                    }
                 }
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
@@ -221,7 +233,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         int year = calendar.get(Calendar.YEAR);
         int month = calendar.get(Calendar.MONTH);
         int day = calendar.get(Calendar.DAY_OF_MONTH);
-        DatePickerDialog datePicker = new DatePickerDialog(CreatePetInfoActivity.this,
+        currentDialog = new DatePickerDialog(CreatePetInfoActivity.this,
                 new DatePickerDialog.OnDateSetListener() {
                     @Override
                     public void onDateSet(DatePicker view, int selectedYear, int selectedMonth, int selectedDay) {
@@ -229,7 +241,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                         etPetBirthday.setText(dateString);
                     }
                 }, year, month, day);
-        datePicker.show();
+        currentDialog.show();
     }
 
     private void showAgeEstimator() {
@@ -246,7 +258,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         TextView monthText = new TextView(CreatePetInfoActivity.this);
         monthText.setText(" 個月"); monthText.setTextSize(18);
         layout.addView(yearPicker); layout.addView(yearText); layout.addView(monthPicker); layout.addView(monthText);
-        new AlertDialog.Builder(CreatePetInfoActivity.this)
+        currentDialog = new AlertDialog.Builder(CreatePetInfoActivity.this)
                 .setTitle("請輸入寵物大約年齡")
                 .setView(layout)
                 .setPositiveButton("自動推算", new DialogInterface.OnClickListener() {
@@ -266,21 +278,22 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         new Thread(() -> {
             try (java.sql.Connection conn = com.example.pet_app.ConnectionHelper.getConnection()) {
                 String sql = "UPDATE Pets SET PetName=?, Species=?, Birthday=?, Gender=?, IsSterilized=? WHERE PetID=?";
-                java.sql.PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, name);
-                pstmt.setString(2, type);
-                pstmt.setString(3, birthday.replace("/", "-")); // SQL 通常用 -
-                pstmt.setString(4, gender);
-                pstmt.setBoolean(5, isSterilized);
-                pstmt.setInt(6, petId);
+                try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, name);
+                    pstmt.setString(2, type);
+                    pstmt.setString(3, birthday.replace("/", "-")); // SQL 通常用 -
+                    pstmt.setString(4, gender);
+                    pstmt.setBoolean(5, isSterilized);
+                    pstmt.setInt(6, petId);
 
-                int result = pstmt.executeUpdate();
-                runOnUiThread(() -> {
-                    if (result > 0) {
-                        Toast.makeText(this, "修改成功", Toast.LENGTH_SHORT).show();
-                        finish(); // 回到 PetInfoActivity
-                    }
-                });
+                    int result = pstmt.executeUpdate();
+                    runOnUiThread(() -> {
+                        if (result > 0) {
+                            Toast.makeText(this, "修改成功", Toast.LENGTH_SHORT).show();
+                            finish(); // 回到 PetInfoActivity
+                        }
+                    });
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> Toast.makeText(this, "修改失敗", Toast.LENGTH_SHORT).show());

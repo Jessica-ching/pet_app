@@ -138,24 +138,28 @@ public class CalendarFragment extends Fragment {
                 // 注意：EvenDate, EvenTime, Title
                 String sql1 = "SELECT e.EventDate, p.PetName, e.Title, e.EventTime " +
                         "FROM Events e JOIN Pets p ON e.PetID = p.PetID WHERE p.UserID = ?";
-                PreparedStatement ps1 = conn.prepareStatement(sql1);
-                ps1.setInt(1, currentUserId);
-                ResultSet rs1 = ps1.executeQuery();
-                while (rs1.next()) {
-                    String d = rs1.getString("EventDate").replace("-", "/"); // 轉為 yyyy/MM/dd
-                    tempEvents.add(new EventModel(d, rs1.getString("PetName"), "📅 " + rs1.getString("Title"), R.drawable.ic_record, false, rs1.getString("EventTime")));
+                try (PreparedStatement ps1 = conn.prepareStatement(sql1)) {
+                    ps1.setInt(1, currentUserId);
+                    try (ResultSet rs1 = ps1.executeQuery()) {
+                        while (rs1.next()) {
+                            String d = rs1.getString("EventDate").replace("-", "/"); // 轉為 yyyy/MM/dd
+                            tempEvents.add(new EventModel(d, rs1.getString("PetName"), "📅 " + rs1.getString("Title"), R.drawable.ic_record, false, rs1.getString("EventTime")));
+                        }
+                    }
                 }
 
                 // 2. 抓取醫療紀錄 (Medical)
                 // 注意：Date, Category, Description (確認拼字是 e 還是 a)
                 String sql2 = "SELECT m.Date, p.PetName, m.Category, m.Description " +
                         "FROM Medical m JOIN Pets p ON m.PetID = p.PetID WHERE p.UserID = ?";
-                PreparedStatement ps2 = conn.prepareStatement(sql2);
-                ps2.setInt(1, currentUserId);
-                ResultSet rs2 = ps2.executeQuery();
-                while (rs2.next()) {
-                    String d = rs2.getString("Date").replace("-", "/");
-                    tempEvents.add(new EventModel(d, rs2.getString("PetName"), "🏥 " + rs2.getString("Category") + ": " + rs2.getString("Description"), R.drawable.ic_pill, false, "醫療"));
+                try (PreparedStatement ps2 = conn.prepareStatement(sql2)) {
+                    ps2.setInt(1, currentUserId);
+                    try (ResultSet rs2 = ps2.executeQuery()) {
+                        while (rs2.next()) {
+                            String d = rs2.getString("Date").replace("-", "/");
+                            tempEvents.add(new EventModel(d, rs2.getString("PetName"), "🏥 " + rs2.getString("Category") + ": " + rs2.getString("Description"), R.drawable.ic_pill, false, "醫療"));
+                        }
+                    }
                 }
 
                 allDbEvents = tempEvents;

@@ -25,7 +25,6 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
         this.listener = listener;
     }
 
-    // 🌟 讓 Fragment 知道現在是哪隻寵物展開了 (防止返回時閃爍縮回)
     public int getExpandedPetId() {
         for (PetModel pet : petList) {
             if (pet.isExpanded()) return pet.getId();
@@ -47,33 +46,45 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
 
         if (holder.tvPetName != null) holder.tvPetName.setText(pet.getName());
 
-        int current = pet.getCurrentCals();
-        int goal = pet.getGoalCals() > 0 ? pet.getGoalCals() : 1;
-        if (holder.pbFood != null) holder.pbFood.setProgress((int) ((current / (float) goal) * 100));
-        if (holder.tvFoodStats != null) holder.tvFoodStats.setText(current + "/" + goal + " 大卡");
+        // 🌟 1. 處理「食物熱量」進度與文字
+        int currentCals = pet.getCurrentCals();
+        int goalCals = pet.getGoalCals() > 0 ? pet.getGoalCals() : 1;
+        if (holder.pbFood != null) {
+            holder.pbFood.setMax(100); // 確保是百分比
+            holder.pbFood.setProgress((int) ((currentCals / (float) goalCals) * 100));
+        }
+        if (holder.tvFoodStats != null) holder.tvFoodStats.setText(currentCals + "/" + goalCals + " 大卡");
 
-        // 🌟 1. 控制展開/收合
+        // 🌟 2. 修正：處理「飲水量」進度與文字
+        int currentWater = pet.getCurrentWater();
+        int goalWater = pet.getGoalWater() > 0 ? pet.getGoalWater() : 1;
+        if (holder.pbWater != null) {
+            holder.pbWater.setMax(100); // 確保是百分比
+            holder.pbWater.setProgress((int) ((currentWater / (float) goalWater) * 100));
+        }
+        if (holder.tvWaterProgress != null) holder.tvWaterProgress.setText(currentWater + "/" + goalWater + " 毫升");
+
+        // 控制展開/收合
         if (holder.layoutDetail != null) {
             holder.layoutDetail.setVisibility(pet.isExpanded() ? View.VISIBLE : View.GONE);
         }
 
-        // 🌟 2. 點擊整張卡片：展開或收合
+        // 點擊整張卡片：展開或收合
         holder.itemView.setOnClickListener(v -> {
             boolean currentlyExpanded = pet.isExpanded();
-            // 點擊時，把其他寵物先收起來，只展開點擊的這隻
             for (PetModel p : petList) p.setExpanded(false);
             pet.setExpanded(!currentlyExpanded);
-            notifyDataSetChanged(); // 刷新動畫
+            notifyDataSetChanged();
         });
 
-        // 🌟 3. 點擊展開的區域 (進度條旁邊)：跳轉到詳情頁 (圖三)
+        // 點擊展開的區域 (進度條旁邊)：跳轉到詳情頁
         if (holder.layoutDetail != null) {
             holder.layoutDetail.setOnClickListener(v -> {
                 if (listener != null) listener.onPetClick(pet);
             });
         }
 
-        // 🌟 4. 點擊按鈕：跳轉到新增額外進食
+        // 點擊按鈕：跳轉到新增額外進食
         if (holder.btnAddFeeding != null) {
             holder.btnAddFeeding.setOnClickListener(v -> {
                 Intent intent = new Intent(v.getContext(), AddExtraFeedingActivity.class);
@@ -85,16 +96,10 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
 
         if (holder.btnSettingsAll != null) {
             holder.btnSettingsAll.setOnClickListener(v -> {
-                // 🌟 修正：導向 PetInfoActivity
                 Intent intent = new Intent(v.getContext(), com.example.pet_app.mainfeature.pet.PetInfoActivity.class);
-
-                // 傳遞必要資訊
                 intent.putExtra("PET_ID", pet.getId());
                 intent.putExtra("PET_NAME", pet.getName());
-
-                // 如果你的 PetInfoActivity 需要區分是「查看」還是「編輯」，可以保留這個 Flag
                 intent.putExtra("IS_EDIT_MODE", true);
-
                 v.getContext().startActivity(intent);
             });
         }
@@ -105,7 +110,11 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
 
     public static class PetViewHolder extends RecyclerView.ViewHolder {
         TextView tvPetName, tvFoodStats;
+        // 🌟 修正：補上飲水文字欄位
+        TextView tvWaterProgress;
         ProgressBar pbFood;
+        // 🌟 修正：補上飲水進度條
+        ProgressBar pbWater;
         View layoutDetail;
         Button btnAddFeeding;
         ImageButton btnSettingsAll;
@@ -115,7 +124,12 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
             tvPetName = itemView.findViewById(R.id.tv_daily_pet_name);
             tvFoodStats = itemView.findViewById(R.id.tv_food_stats);
             pbFood = itemView.findViewById(R.id.pb_food_daily);
-            layoutDetail = itemView.findViewById(R.id.layout_detail); // 包住進度條跟按鈕的 Layout
+
+            // 🌟 修正：用 findViewById 綁定 item_pet.xml 裡面的飲水 UI 元件
+            tvWaterProgress = itemView.findViewById(R.id.tv_water_progress);
+            pbWater = itemView.findViewById(R.id.pb_water_daily);
+
+            layoutDetail = itemView.findViewById(R.id.layout_detail);
             btnAddFeeding = itemView.findViewById(R.id.btn_add_feeding);
             btnSettingsAll = itemView.findViewById(R.id.btn_settings_all);
         }

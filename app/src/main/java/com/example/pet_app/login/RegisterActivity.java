@@ -51,27 +51,30 @@ public class RegisterActivity extends AppCompatActivity {
 
                 // 2. 檢查信箱是否已存在
                 String checkSql = "SELECT COUNT(*) FROM Users WHERE Email = ?";
-                PreparedStatement checkPstmt = conn.prepareStatement(checkSql);
-                checkPstmt.setString(1, email);
-                ResultSet rs = checkPstmt.executeQuery();
-                if (rs.next() && rs.getInt(1) > 0) {
-                    runOnUiThread(() -> Toast.makeText(this, "此電子信箱已被註冊", Toast.LENGTH_SHORT).show());
-                    return;
+                try (PreparedStatement checkPstmt = conn.prepareStatement(checkSql)) {
+                    checkPstmt.setString(1, email);
+                    try (ResultSet rs = checkPstmt.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            runOnUiThread(() -> Toast.makeText(this, "此電子信箱已被註冊", Toast.LENGTH_SHORT).show());
+                            return;
+                        }
+                    }
                 }
 
                 // 3. 執行插入動作 (對應資料表：Email, Password, UserName)
                 // 加入 HasPetInfo 欄位(預設0)，避免登入時 Invalid column name 報錯
                 String sql = "INSERT INTO Users (Email, Password, UserName) VALUES (?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, email);
-                pstmt.setString(2, password);
-                pstmt.setString(3, account);
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, email);
+                    pstmt.setString(2, password);
+                    pstmt.setString(3, account);
 
-                if (pstmt.executeUpdate() > 0) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "註冊成功！", Toast.LENGTH_SHORT).show();
-                        finish(); // 註冊完成後返回登入頁
-                    });
+                    if (pstmt.executeUpdate() > 0) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "註冊成功！", Toast.LENGTH_SHORT).show();
+                            finish(); // 註冊完成後返回登入頁
+                        });
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();

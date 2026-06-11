@@ -78,33 +78,34 @@ public class PetInfoActivity extends AppCompatActivity {
                 // 根據 PetDB 文件，選取正確欄位名
                 // 注意：DailyCalories 與 DailyWater 是我們之前手動在 Pets 表增加的欄位
                 String sql = "SELECT PetName, Species, Gender, Birthday, Weight, IsSterilized, RecommendCalories, RecommendWater FROM Pets WHERE PetID = ?";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, selectedPetId);
-                ResultSet rs = pstmt.executeQuery();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            String name = rs.getString("PetName");
+                            String species = rs.getString("Species");
+                            String gender = rs.getString("Gender");
+                            String birthday = rs.getString("Birthday"); // 格式 YYYY-MM-DD
+                            float weight = rs.getFloat("Weight");
+                            boolean isSterilized = rs.getBoolean("IsSterilized");
+                            int goalCals = rs.getInt("RecommendCalories");
+                            int goalWater = rs.getInt("RecommendWater");
 
-                if (rs.next()) {
-                    String name = rs.getString("PetName");
-                    String species = rs.getString("Species");
-                    String gender = rs.getString("Gender");
-                    String birthday = rs.getString("Birthday"); // 格式 YYYY-MM-DD
-                    float weight = rs.getFloat("Weight");
-                    boolean isSterilized = rs.getBoolean("IsSterilized");
-                    int goalCals = rs.getInt("RecommendCalories");
-                    int goalWater = rs.getInt("RecommendWater");
+                            // 計算年齡
+                            String ageDisplay = calculateAge(birthday);
 
-                    // 計算年齡
-                    String ageDisplay = calculateAge(birthday);
-
-                    runOnUiThread(() -> {
-                        tvTitleName.setText(name);
-                        tvType.setText(species);
-                        tvGender.setText(gender);
-                        tvAge.setText(ageDisplay);
-                        tvWeight.setText(String.format("%.1f", weight));
-                        tvSterilized.setText(isSterilized ? "已結紮" : "未結紮");
-                        tvGoalCals.setText(String.valueOf(goalCals));
-                        tvGoalWater.setText(String.valueOf(goalWater));
-                    });
+                            runOnUiThread(() -> {
+                                tvTitleName.setText(name);
+                                tvType.setText(species);
+                                tvGender.setText(gender);
+                                tvAge.setText(ageDisplay);
+                                tvWeight.setText(String.format("%.1f", weight));
+                                tvSterilized.setText(isSterilized ? "已結紮" : "未結紮");
+                                tvGoalCals.setText(String.valueOf(goalCals));
+                                tvGoalWater.setText(String.valueOf(goalWater));
+                            });
+                        }
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();

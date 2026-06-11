@@ -76,24 +76,26 @@ public class DailyRecordActivity extends AppCompatActivity {
                 // A. 更新 Pets 表的當前體重
                 if (!weightStr.isEmpty()) {
                     String sqlWeight = "UPDATE Pets SET Weight = ? WHERE PetID = ?";
-                    PreparedStatement pstmt1 = conn.prepareStatement(sqlWeight);
-                    pstmt1.setDouble(1, Double.parseDouble(weightStr));
-                    pstmt1.setInt(2, selectedPetId);
-                    pstmt1.executeUpdate();
+                    try (PreparedStatement pstmt1 = conn.prepareStatement(sqlWeight)) {
+                        pstmt1.setDouble(1, Double.parseDouble(weightStr));
+                        pstmt1.setInt(2, selectedPetId);
+                        pstmt1.executeUpdate();
+                    }
                 }
 
                 // B. 將體溫存入 Medical 表 (作為歷史紀錄)
                 if (!tempStr.isEmpty()) {
                     String sqlTemp = "INSERT INTO Medical (PetID, Date, Category, Description) VALUES (?, ?, ?, ?)";
-                    PreparedStatement pstmt2 = conn.prepareStatement(sqlTemp);
-                    pstmt2.setInt(1, selectedPetId);
+                    try (PreparedStatement pstmt2 = conn.prepareStatement(sqlTemp)) {
+                        pstmt2.setInt(1, selectedPetId);
 
-                    // 取得當前日期 yyyy-MM-dd
-                    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-                    pstmt2.setString(2, today);
-                    pstmt2.setString(3, "生理量測");
-                    pstmt2.setString(4, "體溫紀錄: " + tempStr + " °C");
-                    pstmt2.executeUpdate();
+                        // 取得當前日期 yyyy-MM-dd
+                        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+                        pstmt2.setString(2, today);
+                        pstmt2.setString(3, "生理量測");
+                        pstmt2.setString(4, "體溫紀錄: " + tempStr + " °C");
+                        pstmt2.executeUpdate();
+                    }
                 }
 
                 conn.commit(); // 提交

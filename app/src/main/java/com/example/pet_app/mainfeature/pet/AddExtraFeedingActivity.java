@@ -67,18 +67,19 @@ public class AddExtraFeedingActivity extends AppCompatActivity {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "SELECT SnackID, Name, Calories, Gram FROM Snacks";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql);
+                     ResultSet rs = pstmt.executeQuery()) {
 
-                snackNames.clear();
-                snackList.clear();
-                snackNames.add("- 請選擇額外進食種類 -");
-                snackList.add(new SnackModel(-1, "", 0, 0));
+                    snackNames.clear();
+                    snackList.clear();
+                    snackNames.add("- 請選擇額外進食種類 -");
+                    snackList.add(new SnackModel(-1, "", 0, 0));
 
-                while (rs.next()) {
-                    SnackModel s = new SnackModel(rs.getInt("SnackID"), rs.getString("Name"), rs.getInt("Calories"), rs.getFloat("Gram"));
-                    snackList.add(s);
-                    snackNames.add(s.name);
+                    while (rs.next()) {
+                        SnackModel s = new SnackModel(rs.getInt("SnackID"), rs.getString("Name"), rs.getInt("Calories"), rs.getFloat("Gram"));
+                        snackList.add(s);
+                        snackNames.add(s.name);
+                    }
                 }
 
                 runOnUiThread(() -> {
@@ -107,15 +108,15 @@ public class AddExtraFeedingActivity extends AppCompatActivity {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "INSERT INTO DailyFood (PetID, Calories, RecordDate) VALUES (?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
 
-                String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+                    pstmt.setInt(1, selectedPetId);
+                    pstmt.setInt(2, finalCals);
+                    pstmt.setString(3, today);
 
-                pstmt.setInt(1, selectedPetId);
-                pstmt.setInt(2, finalCals);
-                pstmt.setString(3, today);
-
-                pstmt.executeUpdate();
+                    pstmt.executeUpdate();
+                }
 
                 runOnUiThread(() -> {
                     Toast.makeText(this, "儲存成功！", Toast.LENGTH_SHORT).show();

@@ -107,25 +107,26 @@ public class RecordFragment extends Fragment {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "SELECT PetID, PetName, Species FROM Pets WHERE UserID = ?";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, currentUserId);
-                ResultSet rs = pstmt.executeQuery();
-
-                List<PetModel> tempList = new ArrayList<>(); // 先存入暫存清單
-                while (rs.next()) {
-                    tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
-                }
-
-                if (getActivity() != null && isAdded()) {
-                    getActivity().runOnUiThread(() -> {
-                        userPetList.clear();
-                        userPetList.addAll(tempList);
-
-                        if (!userPetList.isEmpty() && selectedPetId == -1) {
-                            // 只有在還沒選過寵物的情況下，才自動選第一隻
-                            updateSelectedPetUI(userPetList.get(0));
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, currentUserId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        List<PetModel> tempList = new ArrayList<>(); // 先存入暫存清單
+                        while (rs.next()) {
+                            tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
                         }
-                    });
+
+                        if (getActivity() != null && isAdded()) {
+                            getActivity().runOnUiThread(() -> {
+                                userPetList.clear();
+                                userPetList.addAll(tempList);
+
+                                if (!userPetList.isEmpty() && selectedPetId == -1) {
+                                    // 只有在還沒選過寵物的情況下，才自動選第一隻
+                                    updateSelectedPetUI(userPetList.get(0));
+                                }
+                            });
+                        }
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();

@@ -5,21 +5,26 @@ import java.sql.DriverManager;
 
 public class ConnectionHelper {
     public static Connection getConnection() throws Exception {
+        // 使用 jTDS 驅動程式 (在 Android 上通常更穩定)
         Class.forName("net.sourceforge.jtds.jdbc.Driver");
 
-        // Azure 專用的連線字串格式
-        // 1. 伺服器位址後加上 :1433
-        // 2. ssl=request 確保加密通訊
-//        String connUrl = "jdbc:jtds:sqlserver://petlove.database.windows.net:1433;" +
-//                "databaseName=PetDB;" +
-//                "user=petapp_admin@petlove;" + // Azure 有時需要 @伺服器名
-//                "password=groupH115;" +
-//                "ssl=request;"; // Azure 雲端通常強制要求加密
-        String connUrl = "jdbc:jtds:sqlserver://pet-grouph.database.windows.net:1433;" +
-                "databaseName=PetDB;" +
-                "user=petapp_admin@pet-grouph;" + // Azure 有時需要 @伺服器名
-                "password=groupH115;" +
-                "ssl=request;";
+        String server = "petlove.database.windows.net";
+        String database = "PetDB";
+        String user = "petapp_admin";
+        String password = "groupH115";
+
+//        // Azure SQL Database 連線資訊
+//        String server = "pet-grouph.database.windows.net";
+//        String database = "PetDB";
+//        String user = "petapp_admin";
+//        String password = "groupH115";
+
+        // jTDS 連線字串
+        String connUrl = "jdbc:jtds:sqlserver://" + server + ":1433/" + database + ";" +
+                "user=" + user + ";" +
+                "password=" + password + ";" +
+                "ssl=request;" +
+                "loginTimeout=30;";
 
         return DriverManager.getConnection(connUrl);
     }

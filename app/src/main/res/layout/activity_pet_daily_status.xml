@@ -101,7 +101,8 @@
                     android:layout_marginHorizontal="12dp"
                     android:layout_weight="1"
                     android:progress="0"
-                    android:progressDrawable="@drawable/custom_progress_orange" />
+                    android:progressDrawable="@drawable/custom_progress_orange"
+                    android:max="100" />
 
                 <TextView
                     android:id="@+id/tv_food_stats"
@@ -131,7 +132,8 @@
                     android:layout_marginHorizontal="12dp"
                     android:layout_weight="1"
                     android:progress="0"
-                    android:progressDrawable="@drawable/custom_progress_blue" />
+                    android:progressDrawable="@drawable/custom_progress_blue"
+                    android:max="100" />
 
                 <TextView
                     android:id="@+id/tv_water_stats"

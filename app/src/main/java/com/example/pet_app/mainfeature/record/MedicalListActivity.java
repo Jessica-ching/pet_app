@@ -90,23 +90,24 @@ public class MedicalListActivity extends AppCompatActivity {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 // ⚠️ 請再次確認資料表名稱與欄位名稱 (例如是否為 MedicalDate)
                 String sql = "SELECT Date, Category, Description FROM Medical WHERE PetID = ? ORDER BY Date DESC";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, selectedPetId);
-                ResultSet rs = pstmt.executeQuery();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) {
+                            String dbDate = rs.getString("Date");
+                            String category = rs.getString("Category");
+                            String desc = rs.getString("Description");
 
-                while (rs.next()) {
-                    String dbDate = rs.getString("Date");
-                    String category = rs.getString("Category");
-                    String desc = rs.getString("Description");
+                            // 🌟 優化日期轉換邏輯
+                            String displayDate = formatToMinguo(dbDate);
 
-                    // 🌟 優化日期轉換邏輯
-                    String displayDate = formatToMinguo(dbDate);
+                            String finalReason = (desc != null && !desc.trim().isEmpty()) ? desc : category;
 
-                    String finalReason = (desc != null && !desc.trim().isEmpty()) ? desc : category;
-
-                    // 這裡 MedicalModel 的建構子要對齊你的定義
-                    MedicalModel record = new MedicalModel(0, displayDate, category, finalReason);
-                    tempList.add(record);
+                            // 這裡 MedicalModel 的建構子要對齊你的定義
+                            MedicalModel record = new MedicalModel(0, displayDate, category, finalReason);
+                            tempList.add(record);
+                        }
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();

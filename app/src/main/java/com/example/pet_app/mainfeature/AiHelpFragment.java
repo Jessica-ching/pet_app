@@ -2,6 +2,7 @@ package com.example.pet_app.mainfeature;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,6 +25,7 @@ import com.example.pet_app.ChatAdapter;
 import com.example.pet_app.ChatMessage;
 import com.example.pet_app.HomeActivity;
 import com.example.pet_app.R;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.json.JSONObject;
 
@@ -99,14 +101,17 @@ public class AiHelpFragment extends Fragment {
         ImageView btnBack = view.findViewById(R.id.btnBack);
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> {
-                // 👇👇👇 換成這段「重新投胎大法」 👇👇👇
-                Intent intent = new Intent(requireActivity(), HomeActivity.class);
-                // 什麼 Flag 都不用加，直接啟動全新的首頁
-                startActivity(intent);
+                Activity activity = getActivity();
+                if (activity == null || activity.isFinishing()) return;
 
-                // 然後把現在這個被玩壞的舊首頁殺掉
-                requireActivity().finish();
-                // 👆👆👆 修改結束 👆👆👆
+                if (activity instanceof HomeActivity) {
+                    BottomNavigationView bottomNav = activity.findViewById(R.id.bottom_navigation);
+                    if (bottomNav != null) {
+                        bottomNav.setSelectedItemId(R.id.nav_home);
+                    }
+                } else {
+                    activity.onBackPressed();
+                }
             });
         }
 
@@ -152,11 +157,15 @@ public class AiHelpFragment extends Fragment {
     }
 
     private void addMessage(ChatMessage message) {
-        if (!isAdded()) return;
-        requireActivity().runOnUiThread(() -> {
-            messageList.add(message);
-            chatAdapter.notifyItemInserted(messageList.size() - 1);
-            rvChat.scrollToPosition(messageList.size() - 1);
+        Activity activity = getActivity();
+        if (activity == null || !isAdded() || activity.isFinishing()) return;
+
+        activity.runOnUiThread(() -> {
+            if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                messageList.add(message);
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                rvChat.scrollToPosition(messageList.size() - 1);
+            }
         });
     }
 
@@ -223,7 +232,11 @@ public class AiHelpFragment extends Fragment {
                 writer.append(question).append("\r\n");
                 writer.flush();
 
-                String mimeType = requireContext().getContentResolver().getType(imageUri);
+                String mimeType = null;
+                Context context = getContext();
+                if (isAdded() && context != null) {
+                    mimeType = context.getContentResolver().getType(imageUri);
+                }
                 if (mimeType == null || mimeType.isEmpty()) mimeType = "image/jpeg";
 
                 writer.append("--").append(boundary).append("\r\n");
@@ -231,8 +244,11 @@ public class AiHelpFragment extends Fragment {
                 writer.append("Content-Type: ").append(mimeType).append("\r\n\r\n");
                 writer.flush();
 
-                InputStream imageInputStream = requireContext().getContentResolver().openInputStream(imageUri);
-                if (imageInputStream == null) throw new Exception("圖片讀取失敗");
+                InputStream imageInputStream = null;
+                if (isAdded() && getContext() != null) {
+                    imageInputStream = getContext().getContentResolver().openInputStream(imageUri);
+                }
+                if (imageInputStream == null) throw new Exception("圖片讀取失敗或視窗已關閉");
 
                 byte[] buffer = new byte[4096];
                 int bytesRead;

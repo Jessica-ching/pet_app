@@ -107,12 +107,13 @@ public class MedicalAddActivity extends AppCompatActivity {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "INSERT INTO Medical (PetID, Date, Category, Description) VALUES (?, ?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, petId);
-                pstmt.setString(2, date);
-                pstmt.setString(3, type);
-                pstmt.setString(4, note);
-                pstmt.executeUpdate();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, petId);
+                    pstmt.setString(2, date);
+                    pstmt.setString(3, type);
+                    pstmt.setString(4, note);
+                    pstmt.executeUpdate();
+                }
 
                 runOnUiThread(() -> {
                     Toast.makeText(this, "儲存成功！", Toast.LENGTH_SHORT).show();

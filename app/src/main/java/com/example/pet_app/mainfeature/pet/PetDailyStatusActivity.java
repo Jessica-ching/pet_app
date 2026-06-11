@@ -92,37 +92,64 @@ public class PetDailyStatusActivity extends AppCompatActivity {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 // 抓取目標值
                 String sqlGoal = "SELECT RecommendCalories, RecommendWater FROM Pets WHERE PetID = ?";
-                PreparedStatement pstmt0 = conn.prepareStatement(sqlGoal);
-                pstmt0.setInt(1, selectedPetId);
-                ResultSet rs0 = pstmt0.executeQuery();
-                if (rs0.next()) {
-                    dbGoalCals = rs0.getInt("RecommendCalories");
-                    dbGoalWater = rs0.getInt("RecommendWater");
+                try (PreparedStatement pstmt0 = conn.prepareStatement(sqlGoal)) {
+                    pstmt0.setInt(1, selectedPetId);
+                    try (ResultSet rs0 = pstmt0.executeQuery()) {
+                        if (rs0.next()) {
+                            dbGoalCals = rs0.getInt("RecommendCalories");
+                            dbGoalWater = rs0.getInt("RecommendWater");
+                        }
+                    }
                 }
 
                 // 統計今日熱量
                 String sqlFood = "SELECT SUM(Calories) FROM DailyFood WHERE PetID = ? AND RecordDate = ?";
-                PreparedStatement pstmt1 = conn.prepareStatement(sqlFood);
-                pstmt1.setInt(1, selectedPetId);
-                pstmt1.setString(2, today);
-                ResultSet rs1 = pstmt1.executeQuery();
-                if (rs1.next()) totalCals = rs1.getInt(1);
+                try (PreparedStatement pstmt1 = conn.prepareStatement(sqlFood)) {
+                    pstmt1.setInt(1, selectedPetId);
+                    pstmt1.setString(2, today);
+                    try (ResultSet rs1 = pstmt1.executeQuery()) {
+                        if (rs1.next()) totalCals = rs1.getInt(1);
+                    }
+                }
+
+                // 統計今日飲水
+                String sqlWater = "SELECT SUM(WaterML) FROM DailyWater WHERE PetID = ? AND RecordDate = ?";
+                try (PreparedStatement pstmt2 = conn.prepareStatement(sqlWater)) {
+                    pstmt2.setInt(1, selectedPetId);
+                    pstmt2.setString(2, today);
+                    try (ResultSet rs2 = pstmt2.executeQuery()) {
+                        if (rs2.next()) totalWater = rs2.getInt(1);
+                    }
+                }
 
                 // 更新 UI
                 final int fCals = totalCals;
                 final int fGoalCals = dbGoalCals > 0 ? dbGoalCals : 1;
+                final int fWater = totalWater;
+                final int fGoalWater = dbGoalWater > 0 ? dbGoalWater : 1;
+
                 runOnUiThread(() -> {
-                    this.currentCals = fCals;
-                    this.goalCals = fGoalCals;
-                    refreshProgress();
+                    if (!isFinishing() && !isDestroyed()) {
+                        this.currentCals = fCals;
+                        this.goalCals = fGoalCals;
+                        this.currentWater = fWater;
+                        this.goalWater = fGoalWater;
+                        refreshProgress();
+                    }
                 });
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
     }
 
     private void refreshProgress() {
+        // 更新食物進度
         int foodProgress = (int) ((currentCals / (float) goalCals) * 100);
         pbFood.setProgress(foodProgress);
         tvFoodStats.setText(currentCals + "/" + goalCals + " 大卡");
+
+        // 更新飲水進度
+        int waterProgress = (int) ((currentWater / (float) goalWater) * 100);
+        pbWater.setProgress(waterProgress);
+        tvWaterStats.setText(currentWater + "/" + goalWater + " ml");
     }
 }

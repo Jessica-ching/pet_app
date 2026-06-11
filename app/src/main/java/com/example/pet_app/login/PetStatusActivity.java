@@ -147,40 +147,24 @@ public class PetStatusActivity extends AppCompatActivity {
 
                 // 1. 存入 Pets 表
                 String sql = "INSERT INTO Pets (UserID, PetName, Gender, Species, Birthday, Weight, FoodID, Activity, BodyType, IsSterilized, RecommendCalories, RecommendWater) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
-                pstmt.setInt(1, userId);
-                pstmt.setString(2, petName);
-                pstmt.setString(3, petGender);
-                pstmt.setString(4, petSpecies);
-                pstmt.setString(5, petBirthday);
-                pstmt.setFloat(6, weight);
-                if (selectedFoodID != -1) pstmt.setInt(7, selectedFoodID); else pstmt.setNull(7, java.sql.Types.INTEGER);
-                pstmt.setString(8, activity);
-                pstmt.setString(9, body);
-                pstmt.setBoolean(10, isSterilized);
-                pstmt.setInt(11, dailyCals);
-                pstmt.setInt(12, dailyWater);
-                pstmt.executeUpdate();
-
-                // 2. 取得新 PetID 並建立 DailyFood 與 DailyWater 的初始目標紀錄
-                ResultSet rs = pstmt.getGeneratedKeys();
-                if (rs.next()) {
-                    int newPetId = rs.getInt(1);
-
-                    // 存入每日熱量初始紀錄
-                    String foodSql = "INSERT INTO DailyFood (PetID, Calories, RecordDate) VALUES (?, ?, GETDATE())";
-                    PreparedStatement fstmt = conn.prepareStatement(foodSql);
-                    fstmt.setInt(1, newPetId);
-                    fstmt.setInt(2, dailyCals);
-                    fstmt.executeUpdate();
-
-                    // 🌟 存入每日飲水初始紀錄 (如果你的 DailyWater 表結構允許)
-                    String waterSql = "INSERT INTO DailyWater (PetID, WaterML, RecordDate) VALUES (?, 0, GETDATE())";
-                    PreparedStatement wstmt = conn.prepareStatement(waterSql);
-                    wstmt.setInt(1, newPetId);
-                    wstmt.executeUpdate();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                    pstmt.setInt(1, userId);
+                    pstmt.setString(2, petName);
+                    pstmt.setString(3, petGender);
+                    pstmt.setString(4, petSpecies);
+                    pstmt.setString(5, petBirthday);
+                    pstmt.setFloat(6, weight);
+                    if (selectedFoodID != -1) pstmt.setInt(7, selectedFoodID);
+                    else pstmt.setNull(7, java.sql.Types.INTEGER);
+                    pstmt.setString(8, activity);
+                    pstmt.setString(9, body);
+                    pstmt.setBoolean(10, isSterilized);
+                    pstmt.setInt(11, dailyCals);
+                    pstmt.setInt(12, dailyWater);
+                    pstmt.executeUpdate();
                 }
 
+                // 成功儲存寵物資料後，直接跳轉到首頁
                 runOnUiThread(() -> {
                     Toast.makeText(this, "寵物資料建立成功！", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(this, HomeActivity.class));

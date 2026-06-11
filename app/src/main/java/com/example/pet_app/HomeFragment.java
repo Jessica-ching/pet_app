@@ -166,29 +166,31 @@ public class HomeFragment extends Fragment {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "SELECT PetID, PetName, Species FROM Pets WHERE UserID = ?";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, currentUserId);
-                ResultSet rs = pstmt.executeQuery();
-
-                List<PetModel> tempList = new ArrayList<>();
-                while (rs.next()) {
-                    tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
-                }
-
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        userPetList.clear();
-                        userPetList.addAll(tempList);
-
-                        if (!userPetList.isEmpty()) {
-                            // 🌟 這裡最重要：抓到寵物後，主動選中第一隻並載入圖表
-                            updatePetSelection(userPetList.get(0));
-                        } else {
-                            tvPetName.setText("尚未新增寵物");
-                            lineChart.setNoDataText("點擊此處新增您的第一隻寵物");
-                            lineChart.invalidate();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, currentUserId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        List<PetModel> tempList = new ArrayList<>();
+                        while (rs.next()) {
+                            tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
                         }
-                    });
+
+                        if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                            getActivity().runOnUiThread(() -> {
+                                if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                                    userPetList.clear();
+                                    userPetList.addAll(tempList);
+
+                                    if (!userPetList.isEmpty()) {
+                                        updatePetSelection(userPetList.get(0));
+                                    } else {
+                                        tvPetName.setText("尚未新增寵物");
+                                        lineChart.setNoDataText("點擊此處新增您的第一隻寵物");
+                                        lineChart.invalidate();
+                                    }
+                                }
+                            });
+                        }
+                    }
                 }
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
@@ -240,15 +242,19 @@ public class HomeFragment extends Fragment {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "SELECT TOP 1 Calories FROM DailyFood WHERE PetID = ? ORDER BY RecordDate DESC";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, selectedPetID);
-                ResultSet rs = pstmt.executeQuery();
-                if (rs.next()) {
-                    int cals = rs.getInt("Calories");
-                    if (isAdded() && getActivity() != null) {
-                        getActivity().runOnUiThread(() -> {
-                            if (tvCaloriesHint != null) tvCaloriesHint.setText("今日建議攝取：" + cals + " kcal");
-                        });
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetID);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            int cals = rs.getInt("Calories");
+                            if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                                getActivity().runOnUiThread(() -> {
+                                    if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                                        if (tvCaloriesHint != null) tvCaloriesHint.setText("今日建議攝取：" + cals + " kcal");
+                                    }
+                                });
+                            }
+                        }
                     }
                 }
             } catch (Exception e) { e.printStackTrace(); }
@@ -274,22 +280,27 @@ public class HomeFragment extends Fragment {
                         " WHERE PetID = ? ORDER BY RecordDate DESC) AS Temp " +
                         "ORDER BY RecordDate ASC";
 
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, selectedPetID);
-                ResultSet rs = pstmt.executeQuery();
-
-                int index = 0;
-                while (rs.next()) {
-                    entries.add(new Entry(index++, rs.getFloat(1)));
-                    String date = rs.getString("RecordDate");
-                    if (date != null && date.length() >= 10) {
-                        xLabels.add(date.substring(5, 10)); // 擷取 MM-dd
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetID);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        int index = 0;
+                        while (rs.next()) {
+                            entries.add(new Entry(index++, rs.getFloat(1)));
+                            String date = rs.getString("RecordDate");
+                            if (date != null && date.length() >= 10) {
+                                xLabels.add(date.substring(5, 10)); // 擷取 MM-dd
+                            }
+                        }
                     }
                 }
 
                 // 🌟 安全檢查
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> updateChartUI(entries, xLabels, unit));
+                if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                    getActivity().runOnUiThread(() -> {
+                        if (isAdded() && getActivity() != null && !getActivity().isFinishing() && !getActivity().isDestroyed()) {
+                            updateChartUI(entries, xLabels, unit);
+                        }
+                    });
                 }
             } catch (Exception e) {
                 e.printStackTrace();

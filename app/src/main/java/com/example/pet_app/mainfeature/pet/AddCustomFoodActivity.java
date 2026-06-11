@@ -64,13 +64,13 @@ public class AddCustomFoodActivity extends AppCompatActivity {
                 // 🌟 關鍵修正：這裡要存入 Snacks 表（菜單），而不是 DailyFood（紀錄）
                 // 根據你的資料庫結構：Name (名稱), Calories (熱量), Gram (基準公克)
                 String sql = "INSERT INTO Snacks (Name, Calories, Gram) VALUES (?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, name);           // 食物名稱
+                    pstmt.setFloat(2, calsPerGram);     // 存入每公克的大卡
+                    pstmt.setFloat(3, 1.0f);            // 基準公克直接設為 1.0 (因為你是輸入每公克)
 
-                pstmt.setString(1, name);           // 食物名稱
-                pstmt.setFloat(2, calsPerGram);     // 存入每公克的大卡
-                pstmt.setFloat(3, 1.0f);            // 基準公克直接設為 1.0 (因為你是輸入每公克)
-
-                pstmt.executeUpdate();
+                    pstmt.executeUpdate();
+                }
 
                 runOnUiThread(() -> {
                     Toast.makeText(this, "成功將「" + name + "」加入食物清單！", Toast.LENGTH_SHORT).show();

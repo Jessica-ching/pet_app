@@ -121,11 +121,13 @@ public class AddEventActivity extends AppCompatActivity {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 String sql = "SELECT PetID, PetName FROM Pets WHERE UserID = ?";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, currentUserId);
-                ResultSet rs = pstmt.executeQuery();
-                while (rs.next()) {
-                    userPets.add(new PetSimpleModel(rs.getInt("PetID"), rs.getString("PetName")));
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, currentUserId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) {
+                            userPets.add(new PetSimpleModel(rs.getInt("PetID"), rs.getString("PetName")));
+                        }
+                    }
                 }
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
@@ -187,25 +189,25 @@ public class AddEventActivity extends AppCompatActivity {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 // 欄位：UserID, PetID, EvenDate, EvenTime, Title
                 String sql = "INSERT INTO Events (UserID, PetID, EventDate, EventTime, Title) VALUES (?, ?, ?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, currentUserId);
+                    pstmt.setInt(2, selectedPetId);
 
-                pstmt.setInt(1, currentUserId);
-                pstmt.setInt(2, selectedPetId);
+                    // EvenDate (Date 類型): 存開始日期，要把 / 換成 -
+                    pstmt.setString(3, startDate.replace("/", "-"));
 
-                // EvenDate (Date 類型): 存開始日期，要把 / 換成 -
-                pstmt.setString(3, startDate.replace("/", "-"));
+                    // EvenTime (nvarchar): 直接存 "09:00 - 11:00"
+                    pstmt.setString(4, timeRange);
 
-                // EvenTime (nvarchar): 直接存 "09:00 - 11:00"
-                pstmt.setString(4, timeRange);
+                    // Title (nvarchar): 我們把標題跟日期範圍拼在一起，這樣顯示時才完整
+                    String fullTitle = title;
+                    if (!endDate.contains("選擇")) {
+                        fullTitle += " (" + startDate + " ~ " + endDate + ")";
+                    }
+                    pstmt.setString(5, fullTitle);
 
-                // Title (nvarchar): 我們把標題跟日期範圍拼在一起，這樣顯示時才完整
-                String fullTitle = title;
-                if (!endDate.contains("選擇")) {
-                    fullTitle += " (" + startDate + " ~ " + endDate + ")";
+                    pstmt.executeUpdate();
                 }
-                pstmt.setString(5, fullTitle);
-
-                pstmt.executeUpdate();
 
                 // ==========================================
                 // 🌟 新增：解析時間並設定手機推播鬧鐘

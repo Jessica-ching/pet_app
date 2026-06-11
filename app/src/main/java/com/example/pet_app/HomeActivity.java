@@ -107,9 +107,10 @@ public class HomeActivity extends AppCompatActivity {
                 else if (id == R.id.nav_calendar) selectedFragment = new CalendarFragment();
                 else if (id == R.id.nav_settings) selectedFragment = new AiHelpFragment();
 
-                if (selectedFragment != null) {
+                if (selectedFragment != null && !isFinishing() && !isDestroyed()) {
                     getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragment_container, selectedFragment).commit();
+                            .replace(R.id.fragment_container, selectedFragment)
+                            .commitAllowingStateLoss();
                 }
                 return true;
             });
@@ -154,8 +155,11 @@ public class HomeActivity extends AppCompatActivity {
         Toast.makeText(this, "已登出", Toast.LENGTH_SHORT).show();
 
         // 登出後重刷 HomeFragment 顯示未登入狀態
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, new HomeFragment()).commit();
+        if (!isFinishing() && !isDestroyed()) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new HomeFragment())
+                    .commitAllowingStateLoss();
+        }
     }
 
     @Override

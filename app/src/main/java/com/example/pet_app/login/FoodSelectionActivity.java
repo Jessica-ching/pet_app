@@ -121,19 +121,20 @@ public class FoodSelectionActivity extends AppCompatActivity {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 // 依照 [cite: 1] 文件，Food 表有 FoodID, Brand, Flavor
                 String sql = "SELECT FoodID, Brand, Flavor FROM Food";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery();
+                try (PreparedStatement pstmt = conn.prepareStatement(sql);
+                     ResultSet rs = pstmt.executeQuery()) {
 
-                while (rs.next()) {
-                    String displayName = "[" + rs.getString("Brand") + "] " + rs.getString("Flavor");
-                    allFoodList.add(new FoodItem(rs.getInt("FoodID"), displayName));
+                    while (rs.next()) {
+                        String displayName = "[" + rs.getString("Brand") + "] " + rs.getString("Flavor");
+                        allFoodList.add(new FoodItem(rs.getInt("FoodID"), displayName));
+                    }
+
+                    runOnUiThread(() -> {
+                        filteredList.clear();
+                        filteredList.addAll(allFoodList);
+                        adapter.notifyDataSetChanged();
+                    });
                 }
-
-                runOnUiThread(() -> {
-                    filteredList.clear();
-                    filteredList.addAll(allFoodList);
-                    adapter.notifyDataSetChanged();
-                });
             } catch (Exception e) {
                 e.printStackTrace();
             }

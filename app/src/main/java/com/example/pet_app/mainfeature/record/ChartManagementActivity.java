@@ -149,16 +149,17 @@ public class ChartManagementActivity extends AppCompatActivity {
 
             try (Connection conn = ConnectionHelper.getConnection()) {
                 if (sql.isEmpty()) return;
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, selectedPetId);
-                pstmt.setString(2, sqlStartDate);
-                pstmt.setString(3, sqlEndDate);
-                ResultSet rs = pstmt.executeQuery();
-
-                int count = 0;
-                while (rs.next()) {
-                    float val = rs.getFloat("val");
-                    entries.add(new Entry(count++, val));
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    pstmt.setString(2, sqlStartDate);
+                    pstmt.setString(3, sqlEndDate);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        int count = 0;
+                        while (rs.next()) {
+                            float val = rs.getFloat("val");
+                            entries.add(new Entry(count++, val));
+                        }
+                    }
                 }
 
                 List<Entry> finalEntries = entries;
