@@ -8,7 +8,11 @@ public class EventModel {
     private boolean isDone;    // 是否勾選完成
     private String timeTag;    // 例如 "15:30"，若為空則顯示 CheckBox
 
-    // 建構子 (Constructor)
+    // 🚀 新增：空的建構子 (讓首頁可以先建立空卡片，再慢慢塞資料)
+    public EventModel() {
+    }
+
+    // 原本的建構子 (Constructor)
     public EventModel(String date, String title, String subtitle, int iconResId, boolean isDone, String timeTag) {
         this.date = date;
         this.title = title;
@@ -30,7 +34,11 @@ public class EventModel {
     public String getPetName() { return title; }
     public String getContent() { return subtitle; }
 
-    // Setter 方法 (當點擊 CheckBox 時更新狀態用)
+    // 🚀 新增：Setter 方法 (讓 HomeFragment 可以把資料設定進去)
+    public void setDate(String date) { this.date = date; }
+    public void setTitle(String title) { this.title = title; }
+    public void setSubtitle(String subtitle) { this.subtitle = subtitle; }
+    public void setIconResId(int iconResId) { this.iconResId = iconResId; }
+    public void setTimeTag(String timeTag) { this.timeTag = timeTag; }
     public void setDone(boolean done) { isDone = done; }
 }
-

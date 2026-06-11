@@ -4,7 +4,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -33,37 +32,38 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     public void onBindViewHolder(@NonNull EventViewHolder holder, int position) {
         EventModel model = eventList.get(position);
 
-        // --- 修改這部分：拆解日期字串 ---
-        String fullDate = model.getDate(); // 假設格式是 "2026/4/12"
+        // --- 1. 處理左側大數字 (只抓取日期) ---
+        String fullDate = model.getDate();
         if (fullDate != null && fullDate.contains("/")) {
             String[] parts = fullDate.split("/");
-
-            // parts[1] 是月份，parts[2] 是日期
-            String monthStr = parts[1] + "月";
-            String dayNum = parts[2];
-
-            holder.tvMonth.setText(monthStr);
-            holder.tvDateNum.setText(dayNum);
+            // parts[2] 就是日期，例如 "01"
+            holder.tvDate.setText(parts[2]);
         } else {
-            holder.tvDateNum.setText(fullDate); // 防呆：如果格式不對就顯示原樣
+            holder.tvDate.setText(fullDate);
         }
-        // ----------------------------
 
-        holder.tvTitle.setText(model.getTitle());
-        holder.tvSubtitle.setText(model.getSubtitle());
-        holder.ivIcon.setImageResource(model.getIconResId());
+        // --- 2. 處理乾淨的標題 ---
+        // 假設 model.getTitle()="kk", model.getSubtitle()="📅 安安\n(2026/06...)"
+        String cleanTitle = model.getTitle();
+        String subtitle = model.getSubtitle();
 
-        // --- 剩下的 CheckBox 邏輯保持不變 ---
+        if (subtitle != null && !subtitle.isEmpty()) {
+            // 切掉括號與日期，只保留 "看醫生" 或 "安安" 等字眼
+            String cleanSubtitle = subtitle.split("\\(")[0].replace("📅", "").trim();
+            cleanTitle = cleanTitle + " - " + cleanSubtitle;
+        }
+        holder.tvTitle.setText(cleanTitle);
+
+        // --- 3. 處理 CheckBox 與時間標籤的切換顯示 ---
         if (model.getTimeTag() != null && !model.getTimeTag().isEmpty()) {
-            holder.tvTimeTag.setVisibility(View.VISIBLE);
-            holder.tvTimeTag.setText(model.getTimeTag());
+            holder.tvTime.setVisibility(View.VISIBLE);
+            holder.tvTime.setText(model.getTimeTag());
             holder.cbDone.setVisibility(View.GONE);
         } else {
-            holder.tvTimeTag.setVisibility(View.GONE);
+            holder.tvTime.setVisibility(View.GONE);
             holder.cbDone.setVisibility(View.VISIBLE);
-            holder.cbDone.setChecked(model.isDone());
 
-            // 避免 RecyclerView 重用 View 導致的監聽器錯亂，先清空再設定
+            // 避免 RecyclerView 重用 View 導致的監聽器錯亂
             holder.cbDone.setOnCheckedChangeListener(null);
             holder.cbDone.setChecked(model.isDone());
             holder.cbDone.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -82,21 +82,17 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         notifyDataSetChanged();
     }
 
-    // 內部的 ViewHolder，負責找到 XML 裡的元件
+    // 內部的 ViewHolder，對應新的精簡版 XML
     static class EventViewHolder extends RecyclerView.ViewHolder {
-        TextView tvMonth, tvDateNum, tvTitle, tvSubtitle, tvTimeTag;
-        ImageView ivIcon;
+        TextView tvDate, tvTitle, tvTime;
         CheckBox cbDone;
 
         public EventViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvMonth = itemView.findViewById(R.id.tv_event_month);
-            tvDateNum = itemView.findViewById(R.id.tv_event_date_num);
-            tvTitle = itemView.findViewById(R.id.tv_event_title);
-            tvSubtitle = itemView.findViewById(R.id.tv_event_subtitle);
-            ivIcon = itemView.findViewById(R.id.iv_event_icon);
+            tvDate = itemView.findViewById(R.id.tv_item_date);
+            tvTitle = itemView.findViewById(R.id.tv_item_title);
+            tvTime = itemView.findViewById(R.id.tv_item_time);
             cbDone = itemView.findViewById(R.id.cb_event_done);
-            tvTimeTag = itemView.findViewById(R.id.tv_event_time_tag);
         }
     }
 }
