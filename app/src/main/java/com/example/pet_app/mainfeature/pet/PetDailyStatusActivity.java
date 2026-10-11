@@ -18,7 +18,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class PetDailyStatusActivity extends AppCompatActivity {
@@ -147,9 +149,64 @@ public class PetDailyStatusActivity extends AppCompatActivity {
         pbFood.setProgress(foodProgress);
         tvFoodStats.setText(currentCals + "/" + goalCals + " 大卡");
 
+        // 檢查異常數據
+        checkAnomaliesLocally();
+
         // 更新飲水進度
         int waterProgress = (int) ((currentWater / (float) goalWater) * 100);
         pbWater.setProgress(waterProgress);
         tvWaterStats.setText(currentWater + "/" + goalWater + " ml");
+    }
+
+    private void checkAnomaliesLocally() {
+        new Thread(() -> {
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                List<Float> intakeHistory = new ArrayList<>();
+                String sqlHistory = "SELECT TOP 8 Calories FROM DailyFood WHERE PetID = ? ORDER BY RecordDate DESC";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlHistory)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) intakeHistory.add(rs.getFloat(1));
+                    }
+                }
+
+                if (intakeHistory.isEmpty()) return;
+
+                float today = intakeHistory.get(0);
+                StringBuilder alerts = new StringBuilder();
+
+                // 1. 與平均比較
+                if (intakeHistory.size() > 1) {
+                    float sum = 0;
+                    for (int i = 1; i < intakeHistory.size(); i++) sum += intakeHistory.get(i);
+                    float avg = sum / (intakeHistory.size() - 1);
+                    if (today < avg * 0.85) {
+                        alerts.append(String.format("⚠️ 食量較七日平均下降 %.0f%%\n", (1 - today/avg)*100));
+                    }
+                }
+
+                // 2. 連續下降
+                if (intakeHistory.size() >= 4) {
+                    if (intakeHistory.get(0) < intakeHistory.get(1) && 
+                        intakeHistory.get(1) < intakeHistory.get(2) && 
+                        intakeHistory.get(2) < intakeHistory.get(3)) {
+                        alerts.append("⚠️ 偵測到進食量連續 3 天下降\n");
+                    }
+                }
+
+                // 3. 低於建議量
+                if (today < goalCals * 0.8) {
+                    alerts.append("⚠️ 今日進食量未達標 (低於 80%)\n");
+                }
+
+                final String msg = alerts.toString();
+                if (!msg.isEmpty()) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+                        // 也可以考慮在 UI 上加一個警示 icon
+                    });
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        }).start();
     }
 }

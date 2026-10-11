@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import androidx.appcompat.view.ContextThemeWrapper;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,7 +37,7 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private boolean isLoggedIn = false;
-    private TextView tvPetName, tvCaloriesHint, txtWelcome;
+    private TextView tvPetName, tvCaloriesHint, txtWelcome, tvAnomalyAlert, tvHealthAlert;
     private ShapeableImageView imgPetAvatar;
     private LineChart lineChart;
     private TextView tvPlaceholder;
@@ -58,7 +59,8 @@ public class HomeFragment extends Fragment {
         imgPetAvatar = view.findViewById(R.id.img_pet_avatar);
         lineChart = view.findViewById(R.id.chart_view);
         tvPlaceholder = view.findViewById(R.id.tv_login_hint);
-        // tvCaloriesHint = view.findViewById(R.id.tv_calories_hint); //假設你有這個顯示熱量的 TextView
+        tvAnomalyAlert = view.findViewById(R.id.tv_todo_label);
+        tvHealthAlert = view.findViewById(R.id.tv_health_alert);
         LinearLayout petSelector = view.findViewById(R.id.pet_selector);
 
         petSelector.setOnClickListener(this::showPetListPopup);
@@ -116,11 +118,14 @@ public class HomeFragment extends Fragment {
     }
 
     public void checkStatusAndRefreshUI() {
+        if (getContext() == null) return;
         SharedPreferences prefs = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
         this.isLoggedIn = prefs.getBoolean("isLoggedIn", false);
         this.currentUserId = prefs.getInt("UserID", -1);
 
         View view = getView();
+        // 如果是在 onCreateView 內呼叫，view 可能還沒賦值給 fragment，所以直接操作傳入的根視圖
+        // 但為了簡化邏輯，我們確保 onResume 會再次執行完整的 UI 更新
         if (view == null) return;
 
         LinearLayout layoutLoginHint = view.findViewById(R.id.layout_login_hint);
@@ -195,7 +200,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void showPetListPopup(View anchor) {
-        PopupMenu popup = new PopupMenu(getContext(), anchor);
+        PopupMenu popup = new PopupMenu(requireContext(), anchor);
         if (isLoggedIn) {
             for (PetModel pet : userPetList) {
                 popup.getMenu().add(pet.name);
@@ -225,14 +230,109 @@ public class HomeFragment extends Fragment {
     }
 
     private void updatePetSelection(PetModel pet) {
+        if (pet == null) return;
         this.selectedPetID = pet.id;
         this.selectedPetName = pet.name;
         tvPetName.setText(pet.name);
+
         imgPetAvatar.setImageResource(pet.species.equals("貓") ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
 
         // 載入該寵物的建議熱量與圖表
         fetchPetDailyGoal();
         loadChartDataFromDB("food");
+        checkIntakeAnomalies();
+    }
+
+    private void checkIntakeAnomalies() {
+        if (selectedPetID == -1) return;
+
+        new Thread(() -> {
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                // 1. 取得目標攝取量 (熱量與飲水)
+                float recommendedCals = 0;
+                float recommendedWater = 0;
+                String sqlGoal = "SELECT RecommendCalories, RecommendWater FROM Pets WHERE PetID = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlGoal)) {
+                    pstmt.setInt(1, selectedPetID);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            recommendedCals = rs.getFloat("RecommendCalories");
+                            recommendedWater = rs.getFloat("RecommendWater");
+                        }
+                    }
+                }
+
+                StringBuilder alertMsg = new StringBuilder();
+
+                // 2. 檢查食量異常 (改為 50% 閾值)
+                List<Float> foodHistory = new ArrayList<>();
+                String sqlFood = "SELECT TOP 8 Calories FROM DailyFood WHERE PetID = ? ORDER BY RecordDate DESC";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlFood)) {
+                    pstmt.setInt(1, selectedPetID);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) foodHistory.add(rs.getFloat(1));
+                    }
+                }
+
+                if (!foodHistory.isEmpty()) {
+                    float todayIntake = foodHistory.get(0);
+                    if (foodHistory.size() > 1) {
+                        float sum = 0;
+                        for (int i = 1; i < foodHistory.size(); i++) sum += foodHistory.get(i);
+                        float avg = sum / (foodHistory.size() - 1);
+                        if (avg > 0 && todayIntake < avg * 0.5) { // 🌟 修改：下降超過 50%
+                            alertMsg.append(String.format("⚠️ 食量較平均下降 %.0f%% (嚴重)\n", (1 - todayIntake/avg)*100));
+                        }
+                    }
+                    if (foodHistory.size() >= 4 && foodHistory.get(0) < foodHistory.get(1) &&
+                            foodHistory.get(1) < foodHistory.get(2) && foodHistory.get(2) < foodHistory.get(3)) {
+                        alertMsg.append("⚠️ 偵測到進食量連續 3 天下降趨勢\n");
+                    }
+                    if (recommendedCals > 0 && todayIntake < recommendedCals * 0.8) {
+                        alertMsg.append("⚠️ 今日進食量低於建議目標 (未達 80%)\n");
+                    }
+                }
+
+                // 3. 檢查飲水異常 (新增)
+                List<Float> waterHistory = new ArrayList<>();
+                String sqlWater = "SELECT TOP 8 WaterML FROM DailyWater WHERE PetID = ? ORDER BY RecordDate DESC";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlWater)) {
+                    pstmt.setInt(1, selectedPetID);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) waterHistory.add(rs.getFloat(1));
+                    }
+                }
+
+                if (!waterHistory.isEmpty()) {
+                    float todayWater = waterHistory.get(0);
+                    if (waterHistory.size() > 1) {
+                        float sum = 0;
+                        for (int i = 1; i < waterHistory.size(); i++) sum += waterHistory.get(i);
+                        float avg = sum / (waterHistory.size() - 1);
+                        if (avg > 0 && todayWater < avg * 0.5) {
+                            alertMsg.append(String.format("⚠️ 飲水量較平均下降 %.0f%% (嚴重)\n", (1 - todayWater/avg)*100));
+                        }
+                    }
+                    if (recommendedWater > 0 && todayWater < recommendedWater * 0.8) {
+                        alertMsg.append("⚠️ 今日飲水量不足 (未達 80%)\n");
+                    }
+                }
+
+                String finalAlert = alertMsg.toString();
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        if (!finalAlert.isEmpty()) {
+                            tvHealthAlert.setVisibility(View.VISIBLE);
+                            tvHealthAlert.setText("● 健康異常警示：\n" + finalAlert);
+                            // 🌟 觸發系統推播通知
+                            com.example.pet_app.LocalNotificationHelper.triggerHealthAlert(getContext(), selectedPetName, finalAlert.replace("\n", " "));
+                        } else {
+                            tvHealthAlert.setVisibility(View.GONE);
+                        }
+                    });
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        }).start();
     }
 
     // 🌟 從 DailyFood 抓取今天的建議熱量

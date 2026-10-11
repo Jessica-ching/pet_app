@@ -175,7 +175,7 @@ public class ChatActivity extends AppCompatActivity {
                             StringBuilder foodResults = new StringBuilder();
 
                             if (foodsArray != null && foodsArray.length() > 0) {
-                                foodResults.append("\n\n🍴 為您推薦以下口味 (前10筆)：\n");
+                                foodResults.append("\n\n🍴 為您推薦飼料：\n");
                                 int count = Math.min(foodsArray.length(), 10);
                                 for (int i = 0; i < count; i++) {
                                     JSONObject food = foodsArray.getJSONObject(i);

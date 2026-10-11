@@ -8,6 +8,7 @@ public class PetModel {
     private int currentWater, goalWater;
     private float weight;
     private boolean isExpanded = false;
+    private String anomalyMessage = ""; // 🌟 儲存異常訊息
 
     public PetModel(int id, String name, String species, String gender, int age, float weight) {
         this.id = id;
@@ -35,4 +36,8 @@ public class PetModel {
     // 控制展開
     public boolean isExpanded() { return isExpanded; }
     public void setExpanded(boolean expanded) { isExpanded = expanded; }
+
+    // 異常訊息 Getter/Setter
+    public String getAnomalyMessage() { return anomalyMessage; }
+    public void setAnomalyMessage(String anomalyMessage) { this.anomalyMessage = anomalyMessage; }
 }

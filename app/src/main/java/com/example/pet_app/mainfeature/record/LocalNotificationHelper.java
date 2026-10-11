@@ -1,7 +1,11 @@
 package com.example.pet_app;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
+import androidx.core.app.NotificationCompat;
 import org.json.JSONArray;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +13,7 @@ import java.util.List;
 public class LocalNotificationHelper {
     private static final String PREF_NAME = "NotificationPrefs";
     private static final String KEY_NOTIFS = "notifications_list";
+    private static final String CHANNEL_ID = "pet_health_channel";
 
     // 新增一筆通知 (會自動把最新的擠到最上面)
     public static void addNotification(Context context, String message) {
@@ -31,6 +36,33 @@ public class LocalNotificationHelper {
             prefs.edit().putString(KEY_NOTIFS, newArray.toString()).apply();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    // 發送系統通知並存入本地紀錄
+    public static void triggerHealthAlert(Context context, String petName, String alertMsg) {
+        String fullMsg = "【健康警示】" + petName + ": " + alertMsg;
+        
+        // 1. 存入本地清單
+        addNotification(context, fullMsg);
+
+        // 2. 發送系統推播
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID, "寵物健康提醒", NotificationManager.IMPORTANCE_HIGH);
+            if (manager != null) manager.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle("🐾 寵物健康異常警示")
+                .setContentText(fullMsg)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        if (manager != null) {
+            manager.notify((int) System.currentTimeMillis(), builder.build());
         }
     }
 

@@ -22,7 +22,7 @@ import java.util.List;
 public class PetFragment extends Fragment {
     private RecyclerView rvPetList;
     private Button btnAddNewPet;
-    private TextView tvLoginHint;
+    private TextView tvLoginHint, tvNoDataHint;
     private List<PetModel> petList = new ArrayList<>();
     private PetAdapter petAdapter;
     private int currentUserId = -1;
@@ -34,6 +34,7 @@ public class PetFragment extends Fragment {
         rvPetList = v.findViewById(R.id.rv_pet_list);
         btnAddNewPet = v.findViewById(R.id.btn_add_new_pet);
         tvLoginHint = v.findViewById(R.id.tv_login_hint);
+        tvNoDataHint = v.findViewById(R.id.tv_no_data_hint);
 
         if (rvPetList != null) rvPetList.setLayoutManager(new LinearLayoutManager(getContext()));
 
@@ -50,11 +51,13 @@ public class PetFragment extends Fragment {
     public void loadPetData() {
         if (checkLoginStatus()) {
             if (tvLoginHint != null) tvLoginHint.setVisibility(View.GONE);
+            // tvNoDataHint 的顯示交給 fetchUserPetsFromDB 判斷
             if (rvPetList != null) rvPetList.setVisibility(View.VISIBLE);
             if (btnAddNewPet != null) btnAddNewPet.setVisibility(View.VISIBLE);
             fetchUserPetsFromDB();
         } else {
             if (tvLoginHint != null) tvLoginHint.setVisibility(View.VISIBLE);
+            if (tvNoDataHint != null) tvNoDataHint.setVisibility(View.GONE);
             if (rvPetList != null) rvPetList.setVisibility(View.GONE);
             if (btnAddNewPet != null) btnAddNewPet.setVisibility(View.GONE);
         }
@@ -110,15 +113,18 @@ public class PetFragment extends Fragment {
                         try {
                             // 使用 COALESCE 替代 ISNULL，因為 MySQL/SQL Server 通用
                             String sqlFood = "SELECT COALESCE(SUM(Calories), 0) FROM DailyFood WHERE PetID = ? AND RecordDate = CAST(GETDATE() AS DATE)";
-                            // 如果你是用 MySQL，上面的 CAST(GETDATE() AS DATE) 如果報錯，改用 CURDATE()
                             try (PreparedStatement pFood = conn.prepareStatement(sqlFood)) {
                                 pFood.setInt(1, petId);
                                 try (ResultSet rFood = pFood.executeQuery()) {
                                     if (rFood.next()) pet.setCurrentCals(rFood.getInt(1));
                                 }
                             }
+
+                            // 🌟 新增：計算異常數據
+                            calculateAnomalies(conn, pet);
+
                         } catch (Exception e) {
-                            android.util.Log.e("PetFragment", "抓取每日熱量失敗，可能是 RecordDate 的格式或函數問題", e);
+                            android.util.Log.e("PetFragment", "抓取每日熱量失敗", e);
                         }
 
                         // 🌟 個別撈今日飲水 (就算 DailyWater 還沒建表，也只會抓到 0 毫升，寵物絕對不會消失！)
@@ -172,13 +178,62 @@ public class PetFragment extends Fragment {
                             petAdapter.notifyDataSetChanged();
                         }
 
-                        // 偵錯提示：
-                        if (petList.isEmpty()) {
-                            android.widget.Toast.makeText(getContext(), "注意：沒撈到任何寵物資料！", android.widget.Toast.LENGTH_SHORT).show();
+                        // 更新無資料提示
+                        if (tvNoDataHint != null) {
+                            tvNoDataHint.setVisibility(petList.isEmpty() ? View.VISIBLE : View.GONE);
+                        }
+                        if (rvPetList != null) {
+                            rvPetList.setVisibility(petList.isEmpty() ? View.GONE : View.VISIBLE);
                         }
                     }
                 });
             }
         }).start();
+    }
+
+    private void calculateAnomalies(Connection conn, PetModel pet) {
+        try {
+            List<Float> intakeHistory = new ArrayList<>();
+            String sqlHistory = "SELECT TOP 8 Calories FROM DailyFood WHERE PetID = ? ORDER BY RecordDate DESC";
+            try (PreparedStatement pstmt = conn.prepareStatement(sqlHistory)) {
+                pstmt.setInt(1, pet.getId());
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) intakeHistory.add(rs.getFloat(1));
+                }
+            }
+
+            if (intakeHistory.isEmpty()) return;
+
+            float today = intakeHistory.get(0);
+            float goal = pet.getGoalCals();
+            StringBuilder anomaly = new StringBuilder();
+
+            if (intakeHistory.size() > 1) {
+                float sum = 0;
+                for (int i = 1; i < intakeHistory.size(); i++) sum += intakeHistory.get(i);
+                float avg = sum / (intakeHistory.size() - 1);
+                if (avg > 0 && today < avg * 0.85) {
+                    anomaly.append("食量下降 ");
+                }
+            }
+
+            if (intakeHistory.size() >= 4) {
+                if (intakeHistory.get(0) < intakeHistory.get(1) && 
+                    intakeHistory.get(1) < intakeHistory.get(2) && 
+                    intakeHistory.get(2) < intakeHistory.get(3)) {
+                    if (anomaly.length() > 0) anomaly.append("& ");
+                    anomaly.append("持續下滑 ");
+                }
+            }
+
+            if (goal > 0 && today < goal * 0.8) {
+                if (anomaly.length() > 0) anomaly.append("& ");
+                anomaly.append("未達標 ");
+            }
+
+            if (anomaly.length() > 0) {
+                pet.setAnomalyMessage("⚠️ " + anomaly.toString().trim());
+            }
+        } catch (Exception e) { e.printStackTrace(); }
     }
 }

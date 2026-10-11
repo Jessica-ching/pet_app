@@ -38,6 +38,20 @@
                 android:textSize="24sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/tv_pet_anomaly_tag"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#FFECEC"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="⚠️ 數據異常"
+                android:textColor="#FF0000"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                android:layout_marginEnd="8dp"/>
+
             <ImageButton
                 android:id="@+id/btn_settings_all"
                 android:layout_width="48dp"

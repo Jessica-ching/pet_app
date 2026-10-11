@@ -46,6 +46,17 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
 
         if (holder.tvPetName != null) holder.tvPetName.setText(pet.getName());
 
+        // 🌟 處理異常標籤
+        if (holder.tvPetAnomalyTag != null) {
+            String anomaly = pet.getAnomalyMessage();
+            if (anomaly != null && !anomaly.isEmpty()) {
+                holder.tvPetAnomalyTag.setVisibility(View.VISIBLE);
+                holder.tvPetAnomalyTag.setText(anomaly);
+            } else {
+                holder.tvPetAnomalyTag.setVisibility(View.GONE);
+            }
+        }
+
         // 🌟 1. 處理「食物熱量」進度與文字
         int currentCals = pet.getCurrentCals();
         int goalCals = pet.getGoalCals() > 0 ? pet.getGoalCals() : 1;
@@ -109,7 +120,7 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
     public int getItemCount() { return petList != null ? petList.size() : 0; }
 
     public static class PetViewHolder extends RecyclerView.ViewHolder {
-        TextView tvPetName, tvFoodStats;
+        TextView tvPetName, tvFoodStats, tvPetAnomalyTag;
         // 🌟 修正：補上飲水文字欄位
         TextView tvWaterProgress;
         ProgressBar pbFood;
@@ -123,6 +134,7 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
             super(itemView);
             tvPetName = itemView.findViewById(R.id.tv_daily_pet_name);
             tvFoodStats = itemView.findViewById(R.id.tv_food_stats);
+            tvPetAnomalyTag = itemView.findViewById(R.id.tv_pet_anomaly_tag);
             pbFood = itemView.findViewById(R.id.pb_food_daily);
 
             // 🌟 修正：用 findViewById 綁定 item_pet.xml 裡面的飲水 UI 元件

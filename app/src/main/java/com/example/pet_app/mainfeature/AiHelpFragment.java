@@ -24,9 +24,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.pet_app.ChatAdapter;
 import com.example.pet_app.ChatMessage;
 import com.example.pet_app.HomeActivity;
+import com.example.pet_app.Hospital;
 import com.example.pet_app.R;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.InputStream;
@@ -169,6 +171,54 @@ public class AiHelpFragment extends Fragment {
         });
     }
 
+    // 建立一個解析 JSON 的輔助方法
+    private void parseJsonResponse(String responseRaw) {
+
+        android.util.Log.d("AI_RESPONSE", "後端回傳內容: " + responseRaw);
+
+        try {
+            // 先將後端可能傳回的非法 JSON 括號及引號進行清洗修正
+            String cleanJson = responseRaw.trim()
+                    .replace("（", "{").replace("）", "}")
+                    .replace("(", "{").replace(")", "}")
+                    .replace("“", "\"").replace("”", "\"");
+
+            JSONObject jsonObject = new JSONObject(cleanJson);
+
+            // 1. 解析回答文字
+            String answer = jsonObject.optString("answer", "");
+            if (answer.isEmpty()) {
+                answer = responseRaw; // 備用方案
+            }
+
+            // 2. 解析醫院資料
+            List<Hospital> hospitalList = new ArrayList<>();
+            if (jsonObject.has("hospital")) {
+                JSONArray array = jsonObject.getJSONArray("hospital");
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject item = array.getJSONObject(i);
+
+                    // 支援大小寫鍵值 (Name / name)
+                    String name = item.has("Name") ? item.optString("Name") : item.optString("name");
+                    String address = item.has("Address") ? item.optString("Address") : item.optString("address");
+                    String phone = item.has("Phone") ? item.optString("Phone") : item.optString("phone");
+
+                    if (!name.isEmpty()) {
+                        hospitalList.add(new Hospital(name, address, phone));
+                    }
+                }
+            }
+
+            // 3. 帶入 UI 呈現
+            addMessage(new ChatMessage(answer, false, hospitalList));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 如果連修正後都無法解析，至少印出完整的原始回應
+            addMessage(new ChatMessage(responseRaw.trim(), false));
+        }
+    }
+
     // 純文字版 API
     private void askAiAssistant(String question) {
         new Thread(() -> {
@@ -196,7 +246,7 @@ public class AiHelpFragment extends Fragment {
                 String response = readStream(responseStream);
 
                 if (responseCode >= 200 && responseCode < 300) {
-                    addMessage(new ChatMessage(response.trim(), false));
+                    parseJsonResponse(response);
                 } else {
                     addMessage(new ChatMessage("伺服器回應錯誤：" + responseCode + "\n" + response, false));
                 }
@@ -267,7 +317,7 @@ public class AiHelpFragment extends Fragment {
                 String response = readStream(responseStream);
 
                 if (responseCode >= 200 && responseCode < 300) {
-                    addMessage(new ChatMessage(response.trim(), false));
+                    parseJsonResponse(response);
                 } else {
                     addMessage(new ChatMessage("後端錯誤：" + responseCode + "\n" + response, false));
                 }
