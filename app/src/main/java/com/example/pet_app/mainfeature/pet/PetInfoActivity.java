@@ -1,7 +1,10 @@
 package com.example.pet_app.mainfeature.pet;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,6 +22,7 @@ public class PetInfoActivity extends AppCompatActivity {
 
     private int selectedPetId;
     private TextView tvTitleName, tvType, tvAge, tvWeight, tvGender, tvSterilized, tvGoalCals, tvGoalWater;
+    private ImageView ivPetAvatar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +38,7 @@ public class PetInfoActivity extends AppCompatActivity {
         tvSterilized = findViewById(R.id.tv_info_sterilized);
         tvGoalCals = findViewById(R.id.tv_info_goal_cals);
         tvGoalWater = findViewById(R.id.tv_info_goal_water);
+        ivPetAvatar = findViewById(R.id.iv_pet_avatar_large);
 
         // 2. 取得 Intent 傳過來的 PetID
         selectedPetId = getIntent().getIntExtra("PET_ID", -1);
@@ -77,7 +82,7 @@ public class PetInfoActivity extends AppCompatActivity {
             try (Connection conn = ConnectionHelper.getConnection()) {
                 // 根據 PetDB 文件，選取正確欄位名
                 // 注意：DailyCalories 與 DailyWater 是我們之前手動在 Pets 表增加的欄位
-                String sql = "SELECT PetName, Species, Gender, Birthday, Weight, IsSterilized, RecommendCalories, RecommendWater FROM Pets WHERE PetID = ?";
+                String sql = "SELECT PetName, Species, Gender, Birthday, Weight, IsSterilized, RecommendCalories, RecommendWater, Image FROM Pets WHERE PetID = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setInt(1, selectedPetId);
                     try (ResultSet rs = pstmt.executeQuery()) {
@@ -90,6 +95,7 @@ public class PetInfoActivity extends AppCompatActivity {
                             boolean isSterilized = rs.getBoolean("IsSterilized");
                             int goalCals = rs.getInt("RecommendCalories");
                             int goalWater = rs.getInt("RecommendWater");
+                            byte[] imgBytes = rs.getBytes("Image");
 
                             // 計算年齡
                             String ageDisplay = calculateAge(birthday);
@@ -103,6 +109,13 @@ public class PetInfoActivity extends AppCompatActivity {
                                 tvSterilized.setText(isSterilized ? "已結紮" : "未結紮");
                                 tvGoalCals.setText(String.valueOf(goalCals));
                                 tvGoalWater.setText(String.valueOf(goalWater));
+
+                                if (imgBytes != null && imgBytes.length > 0) {
+                                    Bitmap bmp = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+                                    ivPetAvatar.setImageBitmap(bmp);
+                                } else {
+                                    ivPetAvatar.setImageResource(R.drawable.cat_flower);
+                                }
                             });
                         }
                     }

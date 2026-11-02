@@ -97,6 +97,7 @@ public class PetFragment extends Fragment {
                                 "", "", 0,
                                 rs.getFloat("Weight")
                         );
+                        pet.setImageBytes(rs.getBytes("Image"));
 
                         // 🌟 預防欄位不存在：加個預設目標值防呆
                         int recommendCals = 1200; // 給個預設值

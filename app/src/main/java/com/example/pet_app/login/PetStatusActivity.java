@@ -36,6 +36,7 @@ public class PetStatusActivity extends AppCompatActivity {
     private String petName, petSpecies, petGender, petBirthday;
     private boolean isSterilized;
     private int selectedFoodID;
+    private byte[] petImage = null;
     private EditText etPetWeight;
 
     @Override
@@ -51,6 +52,7 @@ public class PetStatusActivity extends AppCompatActivity {
             petBirthday = extras.getString("petBirthday", "");
             isSterilized = extras.getBoolean("isSterilized", false);
             selectedFoodID = extras.getInt("selectedFoodID", -1);
+            petImage = extras.getByteArray("petImage");
         }
 
         TextView tvPetNameBadge = findViewById(R.id.tvPetNameBadge);
@@ -146,7 +148,7 @@ public class PetStatusActivity extends AppCompatActivity {
                 int dailyWater = calculateDailyWater(weight); // 🌟 使用 50ml 公式
 
                 // 1. 存入 Pets 表
-                String sql = "INSERT INTO Pets (UserID, PetName, Gender, Species, Birthday, Weight, FoodID, Activity, BodyType, IsSterilized, RecommendCalories, RecommendWater) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                String sql = "INSERT INTO Pets (UserID, PetName, Gender, Species, Birthday, Weight, FoodID, Activity, BodyType, IsSterilized, RecommendCalories, RecommendWater, Image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
                     pstmt.setInt(1, userId);
                     pstmt.setString(2, petName);
@@ -161,6 +163,13 @@ public class PetStatusActivity extends AppCompatActivity {
                     pstmt.setBoolean(10, isSterilized);
                     pstmt.setInt(11, dailyCals);
                     pstmt.setInt(12, dailyWater);
+                    
+                    if (petImage != null) {
+                        pstmt.setBytes(13, petImage);
+                    } else {
+                        pstmt.setNull(13, java.sql.Types.VARBINARY);
+                    }
+
                     pstmt.executeUpdate();
                 }
 

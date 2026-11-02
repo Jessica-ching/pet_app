@@ -26,6 +26,7 @@ public class MedicalListActivity extends AppCompatActivity {
 
     // 🌟 宣告標頭元件變數
     private TextView tvPetNameHeader;
+    private com.google.android.material.imageview.ShapeableImageView imgPetAvatar;
     private int selectedPetId = -1;
     private String selectedPetName; // 🌟 宣告存名字的變數
 
@@ -41,6 +42,7 @@ public class MedicalListActivity extends AppCompatActivity {
         // 2. 初始化元件
         rvMedicalList = findViewById(R.id.rv_medical_records);
         tvPetNameHeader = findViewById(R.id.tv_pet_name); // 🌟 綁定標頭的 TextView
+        imgPetAvatar = findViewById(R.id.img_pet_avatar);
 
         // 3. 🌟 關鍵顯示：把「小花」蓋成「小黑」
         if (tvPetNameHeader != null && selectedPetName != null) {
@@ -79,7 +81,35 @@ public class MedicalListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        fetchPetInfo();
         fetchMedicalRecords();
+    }
+
+    private void fetchPetInfo() {
+        if (selectedPetId == -1) return;
+        new Thread(() -> {
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                String sql = "SELECT Species, Image FROM Pets WHERE PetID = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            String species = rs.getString("Species");
+                            byte[] imgBytes = rs.getBytes("Image");
+                            runOnUiThread(() -> {
+                                if (imgBytes != null && imgBytes.length > 0) {
+                                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+                                    imgPetAvatar.setImageBitmap(bitmap);
+                                } else {
+                                    imgPetAvatar.setImageResource(species != null && species.contains("貓") ? 
+                                        R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        }).start();
     }
 
     private void fetchMedicalRecords() {

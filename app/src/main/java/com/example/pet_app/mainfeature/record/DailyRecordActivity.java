@@ -22,6 +22,8 @@ public class DailyRecordActivity extends AppCompatActivity {
 
     private int selectedPetId = -1;
     private String petName;
+    private byte[] petImage;
+    private String species;
     private EditText etWeight, etTemp;
 
     @Override
@@ -42,17 +44,41 @@ public class DailyRecordActivity extends AppCompatActivity {
 
         tvName.setText(petName != null ? petName : "未知寵物");
 
-        // 根據名字設定頭像
-        if ("小花".equals(petName)) {
-            imgAvatar.setImageResource(R.drawable.cat_flower);
-        } else {
-            imgAvatar.setImageResource(R.drawable.cat_placeholder);
-        }
+        // 獲取寵物更詳細的資訊（頭像）
+        fetchPetDetail(imgAvatar);
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         // 2. 儲存邏輯
         btnSave.setOnClickListener(v -> saveHealthData());
+    }
+
+    private void fetchPetDetail(ImageView imgAvatar) {
+        new Thread(() -> {
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                String sql = "SELECT Species, Image FROM Pets WHERE PetID = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            species = rs.getString("Species");
+                            petImage = rs.getBytes("Image");
+
+                            runOnUiThread(() -> {
+                                if (petImage != null && petImage.length > 0) {
+                                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(petImage, 0, petImage.length);
+                                    imgAvatar.setImageBitmap(bitmap);
+                                } else {
+                                    imgAvatar.setImageResource(species != null && species.contains("貓") ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private void saveHealthData() {

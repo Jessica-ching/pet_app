@@ -18,13 +18,20 @@ import android.widget.Toast;
 import androidx.fragment.app.Fragment;
 
 import com.example.pet_app.login.LoginActivity;
+import com.example.pet_app.mainfeature.calender.EventAdapter;
 import com.example.pet_app.mainfeature.calender.EventModel;
 import com.example.pet_app.mainfeature.record.DataManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.google.android.material.imageview.ShapeableImageView;
 
@@ -40,10 +47,16 @@ public class HomeFragment extends Fragment {
     private TextView tvPetName, tvCaloriesHint, txtWelcome, tvAnomalyAlert, tvHealthAlert;
     private ShapeableImageView imgPetAvatar;
     private LineChart lineChart;
+    private BarChart barChart;
+    private TextView tvLineType, tvBarType;
+    private boolean isLineChart = true;
     private TextView tvPlaceholder;
+    private RecyclerView rvHomeEvents;
+    private EventAdapter eventAdapter;
+    private List<EventModel> allEvents = new ArrayList<>();
 
     private int currentUserId = -1;
-    private List<PetModel> userPetList = new ArrayList<>();
+    private List<PetDropdownAdapter.PetDropdownModel> userPetList = new ArrayList<>();
     private int selectedPetID = -1; // 當前選中的寵物 ID
     private String selectedPetName = "";
 
@@ -58,10 +71,19 @@ public class HomeFragment extends Fragment {
         txtWelcome = view.findViewById(R.id.tv_title);
         imgPetAvatar = view.findViewById(R.id.img_pet_avatar);
         lineChart = view.findViewById(R.id.chart_view);
+        barChart = view.findViewById(R.id.bar_chart_view);
+        tvLineType = view.findViewById(R.id.tv_line_type);
+        tvBarType = view.findViewById(R.id.tv_bar_type);
         tvPlaceholder = view.findViewById(R.id.tv_login_hint);
         tvAnomalyAlert = view.findViewById(R.id.tv_todo_label);
         tvHealthAlert = view.findViewById(R.id.tv_health_alert);
         LinearLayout petSelector = view.findViewById(R.id.pet_selector);
+
+        // 初始化代辦事項 RecyclerView
+        rvHomeEvents = view.findViewById(R.id.rv_home_events);
+        rvHomeEvents.setLayoutManager(new LinearLayoutManager(getContext()));
+        eventAdapter = new EventAdapter(new ArrayList<>());
+        rvHomeEvents.setAdapter(eventAdapter);
 
         petSelector.setOnClickListener(this::showPetListPopup);
 
@@ -78,6 +100,24 @@ public class HomeFragment extends Fragment {
             ivFoodTab.setAlpha(0.3f);
             ivWaterTab.setAlpha(1.0f);
             loadChartDataFromDB("water");
+        });
+
+        tvLineType.setOnClickListener(v -> {
+            isLineChart = true;
+            tvLineType.setTextColor(Color.parseColor("#E6B34D"));
+            tvLineType.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvBarType.setTextColor(Color.parseColor("#999999"));
+            tvBarType.setTypeface(null, android.graphics.Typeface.NORMAL);
+            loadChartDataFromDB(ivFoodTab.getAlpha() == 1.0f ? "food" : "water");
+        });
+
+        tvBarType.setOnClickListener(v -> {
+            isLineChart = false;
+            tvBarType.setTextColor(Color.parseColor("#E6B34D"));
+            tvBarType.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvLineType.setTextColor(Color.parseColor("#999999"));
+            tvLineType.setTypeface(null, android.graphics.Typeface.NORMAL);
+            loadChartDataFromDB(ivFoodTab.getAlpha() == 1.0f ? "food" : "water");
         });
 
         // 在 tvPlaceholder 的初始化後加入（如果 XML 裡那個提示是可點擊的）
@@ -124,15 +164,15 @@ public class HomeFragment extends Fragment {
         this.currentUserId = prefs.getInt("UserID", -1);
 
         View view = getView();
-        // 如果是在 onCreateView 內呼叫，view 可能還沒賦值給 fragment，所以直接操作傳入的根視圖
-        // 但為了簡化邏輯，我們確保 onResume 會再次執行完整的 UI 更新
         if (view == null) return;
 
         LinearLayout layoutLoginHint = view.findViewById(R.id.layout_login_hint);
+        View chartSwitch = view.findViewById(R.id.layout_chart_switch);
 
         if (isLoggedIn) {
             if (layoutLoginHint != null) layoutLoginHint.setVisibility(View.GONE);
-            lineChart.setVisibility(View.VISIBLE);
+            if (chartSwitch != null) chartSwitch.setVisibility(View.VISIBLE);
+            updateChartVisibility();
 
             String userName = prefs.getString("UserName", "用戶");
             if (txtWelcome != null) {
@@ -140,14 +180,27 @@ public class HomeFragment extends Fragment {
             }
 
             loadChartData();
+            fetchHomeEvents();
         } else {
             if (layoutLoginHint != null) layoutLoginHint.setVisibility(View.VISIBLE);
+            if (chartSwitch != null) chartSwitch.setVisibility(View.GONE);
             lineChart.setVisibility(View.GONE);
+            barChart.setVisibility(View.GONE);
 
             if (txtWelcome != null) {
                 txtWelcome.setText("請先登入以查看資料");
             }
             clearChart();
+        }
+    }
+
+    private void updateChartVisibility() {
+        if (isLineChart) {
+            lineChart.setVisibility(View.VISIBLE);
+            barChart.setVisibility(View.GONE);
+        } else {
+            lineChart.setVisibility(View.GONE);
+            barChart.setVisibility(View.VISIBLE);
         }
     }
 
@@ -161,8 +214,11 @@ public class HomeFragment extends Fragment {
 
     private void clearChart() {
         lineChart.clear();
+        barChart.clear();
         lineChart.setNoDataText("請先登入以查看資料");
+        barChart.setNoDataText("請先登入以查看資料");
         lineChart.invalidate();
+        barChart.invalidate();
     }
 
     // 🌟 從資料庫抓取該使用者的所有寵物
@@ -170,14 +226,19 @@ public class HomeFragment extends Fragment {
         if (currentUserId == -1) return;
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-                String sql = "SELECT PetID, PetName, Species FROM Pets WHERE UserID = ?";
+                String sql = "SELECT PetID, PetName, Species, Image FROM Pets WHERE UserID = ?";
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 pstmt.setInt(1, currentUserId);
                 ResultSet rs = pstmt.executeQuery();
 
-                List<PetModel> tempList = new ArrayList<>();
+                List<PetDropdownAdapter.PetDropdownModel> tempList = new ArrayList<>();
                 while (rs.next()) {
-                    tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
+                    tempList.add(new PetDropdownAdapter.PetDropdownModel(
+                        rs.getInt("PetID"), 
+                        rs.getString("PetName"), 
+                        rs.getString("Species"),
+                        rs.getBytes("Image")
+                    ));
                 }
 
                 if (isAdded() && getActivity() != null) {
@@ -191,7 +252,9 @@ public class HomeFragment extends Fragment {
                         } else {
                             tvPetName.setText("尚未新增寵物");
                             lineChart.setNoDataText("點擊此處新增您的第一隻寵物");
+                            barChart.setNoDataText("點擊此處新增您的第一隻寵物");
                             lineChart.invalidate();
+                            barChart.invalidate();
                         }
                     });
                 }
@@ -200,42 +263,36 @@ public class HomeFragment extends Fragment {
     }
 
     private void showPetListPopup(View anchor) {
-        PopupMenu popup = new PopupMenu(requireContext(), anchor);
-        if (isLoggedIn) {
-            for (PetModel pet : userPetList) {
-                popup.getMenu().add(pet.name);
-            }
-            popup.getMenu().add("+ 新增寵物");
-        } else {
-            popup.getMenu().add("請先登入");
+        if (!isLoggedIn) {
+            startActivity(new Intent(getActivity(), LoginActivity.class));
+            return;
         }
 
-        popup.setOnMenuItemClickListener(item -> {
-            String title = item.getTitle().toString();
-            if (title.equals("請先登入")) {
-                startActivity(new Intent(getActivity(), LoginActivity.class));
-            } else if (title.equals("+ 新增寵物")) {
-                // 跳轉新增頁面
-            } else {
-                for (PetModel pet : userPetList) {
-                    if (pet.name.equals(title)) {
-                        updatePetSelection(pet);
-                        break;
-                    }
-                }
-            }
-            return true;
-        });
-        popup.show();
+        PetDropdownAdapter adapter = new PetDropdownAdapter(requireContext(), userPetList);
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("選擇寵物")
+                .setAdapter(adapter, (d, which) -> {
+                    updatePetSelection(userPetList.get(which));
+                })
+                .setPositiveButton("+ 新增寵物", (d, which) -> {
+                    // 跳轉新增頁面
+                })
+                .create();
+        dialog.show();
     }
 
-    private void updatePetSelection(PetModel pet) {
+    private void updatePetSelection(PetDropdownAdapter.PetDropdownModel pet) {
         if (pet == null) return;
         this.selectedPetID = pet.id;
         this.selectedPetName = pet.name;
         tvPetName.setText(pet.name);
 
-        imgPetAvatar.setImageResource(pet.species.equals("貓") ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+        if (pet.image != null && pet.image.length > 0) {
+            android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(pet.image, 0, pet.image.length);
+            imgPetAvatar.setImageBitmap(bitmap);
+        } else {
+            imgPetAvatar.setImageResource(pet.species.equals("貓") ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+        }
 
         // 載入該寵物的建議熱量與圖表
         fetchPetDailyGoal();
@@ -355,12 +412,72 @@ public class HomeFragment extends Fragment {
         }).start();
     }
 
-    // 🌟 核心：從資料庫撈取圖表數據 (熱量/水)
+    // 🌟 從資料庫抓取代辦事項 (未來 5 天)
+    private void fetchHomeEvents() {
+        if (currentUserId == -1) return;
+
+        new Thread(() -> {
+            List<EventModel> tempEvents = new ArrayList<>();
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                if (conn == null) return;
+
+                // 1. 抓取一般行程 (Events)
+                String sql1 = "SELECT e.EventDate, p.PetName, e.Title, e.EventTime " +
+                        "FROM Events e JOIN Pets p ON e.PetID = p.PetID WHERE p.UserID = ?";
+                try (PreparedStatement ps1 = conn.prepareStatement(sql1)) {
+                    ps1.setInt(1, currentUserId);
+                    try (ResultSet rs1 = ps1.executeQuery()) {
+                        while (rs1.next()) {
+                            String d = rs1.getString("EventDate").replace("-", "/");
+                            tempEvents.add(new EventModel(d, rs1.getString("PetName"), "📅 " + rs1.getString("Title"), R.drawable.ic_record, false, rs1.getString("EventTime")));
+                        }
+                    }
+                }
+
+                // 2. 抓取醫療紀錄 (Medical)
+                String sql2 = "SELECT m.Date, p.PetName, m.Category, m.Description " +
+                        "FROM Medical m JOIN Pets p ON m.PetID = p.PetID WHERE p.UserID = ?";
+                try (PreparedStatement ps2 = conn.prepareStatement(sql2)) {
+                    ps2.setInt(1, currentUserId);
+                    try (ResultSet rs2 = ps2.executeQuery()) {
+                        while (rs2.next()) {
+                            String d = rs2.getString("Date").replace("-", "/");
+                            tempEvents.add(new EventModel(d, rs2.getString("PetName"), "🏥 " + rs2.getString("Category") + ": " + rs2.getString("Description"), R.drawable.ic_pill, false, "醫療"));
+                        }
+                    }
+                }
+
+                // 篩選未來 5 天內的事件
+                List<EventModel> filteredList = new ArrayList<>();
+                long now = System.currentTimeMillis();
+                long fiveDaysLater = now + (5L * 24 * 60 * 60 * 1000);
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy/M/d", java.util.Locale.getDefault());
+
+                for (EventModel event : tempEvents) {
+                    try {
+                        java.util.Date d = sdf.parse(event.getDate());
+                        if (d != null && d.getTime() >= (now - 86400000) && d.getTime() <= fiveDaysLater) {
+                            filteredList.add(event);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> eventAdapter.updateList(filteredList));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    // 🌟 從資料庫抓取圖表數據 (熱量/水)
     private void loadChartDataFromDB(String type) {
         if (selectedPetID == -1) return;
 
         new Thread(() -> {
-            List<Entry> entries = new ArrayList<>();
+            List<Entry> lineEntries = new ArrayList<>();
+            List<BarEntry> barEntries = new ArrayList<>();
             ArrayList<String> xLabels = new ArrayList<>();
             String unit = type.equals("food") ? "kcal" : "ml";
 
@@ -368,7 +485,6 @@ public class HomeFragment extends Fragment {
                 String table = type.equals("food") ? "DailyFood" : "DailyWater";
                 String column = type.equals("food") ? "Calories" : "WaterML";
 
-                // 🌟 修正：抓取「最新」的 7 筆，並確保按日期正向排列給圖表
                 String sql = "SELECT " + column + ", RecordDate FROM (" +
                         "SELECT TOP 7 " + column + ", RecordDate FROM " + table +
                         " WHERE PetID = ? ORDER BY RecordDate DESC) AS Temp " +
@@ -380,16 +496,25 @@ public class HomeFragment extends Fragment {
 
                 int index = 0;
                 while (rs.next()) {
-                    entries.add(new Entry(index++, rs.getFloat(1)));
+                    float val = rs.getFloat(1);
+                    lineEntries.add(new Entry(index, val));
+                    barEntries.add(new BarEntry(index, val));
+                    index++;
                     String date = rs.getString("RecordDate");
                     if (date != null && date.length() >= 10) {
-                        xLabels.add(date.substring(5, 10)); // 擷取 MM-dd
+                        xLabels.add(date.substring(5, 10)); // MM-dd
                     }
                 }
 
-                // 🌟 安全檢查
                 if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> updateChartUI(entries, xLabels, unit));
+                    getActivity().runOnUiThread(() -> {
+                        updateChartVisibility();
+                        if (isLineChart) {
+                            updateLineChartUI(lineEntries, xLabels, unit);
+                        } else {
+                            updateBarChartUI(barEntries, xLabels, unit);
+                        }
+                    });
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -397,7 +522,7 @@ public class HomeFragment extends Fragment {
         }).start();
     }
 
-    private void updateChartUI(List<Entry> entries, ArrayList<String> xLabels, String unitName) {
+    private void updateLineChartUI(List<Entry> entries, ArrayList<String> xLabels, String unitName) {
         if (entries.isEmpty()) {
             lineChart.clear();
             lineChart.setNoDataText("暫無紀錄資料");
@@ -422,6 +547,31 @@ public class HomeFragment extends Fragment {
         lineChart.animateY(800);
     }
 
+    private void updateBarChartUI(List<BarEntry> entries, ArrayList<String> xLabels, String unitName) {
+        if (entries.isEmpty()) {
+            barChart.clear();
+            barChart.setNoDataText("暫無紀錄資料");
+            barChart.invalidate();
+            return;
+        }
+        BarDataSet dataSet = new BarDataSet(entries, selectedPetName + " 的紀錄");
+        dataSet.setColor(Color.parseColor("#E6B34D"));
+        dataSet.setValueTextSize(10f);
+
+        barChart.setData(new BarData(dataSet));
+        XAxis xAxis = barChart.getXAxis();
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(xLabels));
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setDrawGridLines(false);
+        
+        barChart.getAxisLeft().setAxisMinimum(0f);
+        barChart.getAxisRight().setEnabled(false);
+        barChart.getDescription().setText("單位：" + unitName);
+        barChart.invalidate();
+        barChart.animateY(800);
+    }
+
     // --- 新增：彈出時間選擇器 ---
     private void showTimePickerDialog(String title) {
         java.util.Calendar calendar = java.util.Calendar.getInstance();
@@ -441,9 +591,4 @@ public class HomeFragment extends Fragment {
     }
     // --- 新增結束 ---
 
-    // 寵物簡單模型
-    class PetModel {
-        int id; String name, species;
-        PetModel(int id, String name, String species) { this.id = id; this.name = name; this.species = species; }
-    }
 }

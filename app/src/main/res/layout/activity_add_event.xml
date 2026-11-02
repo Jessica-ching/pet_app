@@ -60,6 +60,7 @@
         android:gravity="center_vertical">
 
         <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_pet_icon_in_add"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:src="@drawable/cat_flower"

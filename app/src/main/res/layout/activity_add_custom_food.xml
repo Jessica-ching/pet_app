@@ -68,7 +68,18 @@
             android:background="@drawable/bg_white_rounded_capsule"
             android:hint="請輸入該食物每公克大卡數"
             android:gravity="center"
-            android:inputType="number"
+            android:inputType="numberDecimal"
+            android:textSize="18sp" />
+
+        <EditText
+            android:id="@+id/et_custom_food_grams"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginTop="25dp"
+            android:background="@drawable/bg_white_rounded_capsule"
+            android:hint="請輸入本次進食公克數"
+            android:gravity="center"
+            android:inputType="numberDecimal"
             android:textSize="18sp" />
 
     </LinearLayout>
@@ -85,6 +96,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_back"
-        android:layout_marginTop="350dp" />
+        android:layout_marginTop="450dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

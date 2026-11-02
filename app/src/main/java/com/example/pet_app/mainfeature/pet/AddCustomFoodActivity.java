@@ -20,21 +20,19 @@ import java.util.Locale;
 public class AddCustomFoodActivity extends AppCompatActivity {
 
     // 🌟 依照你寫的 XML 元件宣告變數
-    private EditText etFoodName, etFoodCals;
+    private EditText etFoodName, etFoodCals, etFoodGrams;
     private int selectedPetId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 🌟 檢查點2：這裡要對應你剛才貼的那份 XML 的檔名
         setContentView(R.layout.activity_add_custom_food);
 
-        // 接收傳過來的 ID
         selectedPetId = getIntent().getIntExtra("PET_ID", -1);
 
-        // 🌟 檢查點3：這裡的 ID 必須跟你 XML 裡的 android:id 完美一致
         etFoodName = findViewById(R.id.et_custom_food_name);
         etFoodCals = findViewById(R.id.et_custom_food_calories);
+        etFoodGrams = findViewById(R.id.et_custom_food_grams);
         Button btnSave = findViewById(R.id.btn_save_custom_food);
         ImageButton btnBack = findViewById(R.id.btn_back);
 
@@ -50,36 +48,47 @@ public class AddCustomFoodActivity extends AppCompatActivity {
     private void saveToDB() {
         String name = etFoodName.getText().toString().trim();
         String calsPerGramStr = etFoodCals.getText().toString().trim();
+        String gramsStr = etFoodGrams.getText().toString().trim();
 
-        if (name.isEmpty() || calsPerGramStr.isEmpty()) {
-            Toast.makeText(this, "名稱或熱量不能空白喔！", Toast.LENGTH_SHORT).show();
+        if (name.isEmpty() || calsPerGramStr.isEmpty() || gramsStr.isEmpty()) {
+            Toast.makeText(this, "請填寫所有欄位喔！", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 取得使用者輸入的「每公克熱量」
+        // 取得使用者輸入
         float calsPerGram = Float.parseFloat(calsPerGramStr);
+        float gramsEaten = Float.parseFloat(gramsStr);
+        int totalCalories = Math.round(calsPerGram * gramsEaten);
 
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-                // 🌟 關鍵修正：這裡要存入 Snacks 表（菜單），而不是 DailyFood（紀錄）
-                // 根據你的資料庫結構：Name (名稱), Calories (熱量), Gram (基準公克)
-                String sql = "INSERT INTO Snacks (Name, Calories, Gram) VALUES (?, ?, ?)";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                // 1. 存入 Snacks 表 (供以後選取)
+                String sqlSnack = "INSERT INTO Snacks (Name, Calories, Gram) VALUES (?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlSnack)) {
                     pstmt.setString(1, name);           // 食物名稱
-                    pstmt.setFloat(2, calsPerGram);     // 存入每公克的大卡
-                    pstmt.setFloat(3, 1.0f);            // 基準公克直接設為 1.0 (因為你是輸入每公克)
+                    pstmt.setFloat(2, calsPerGram);     // 每公克大卡
+                    pstmt.setFloat(3, 1.0f);            // 基準公克設為 1
+                    pstmt.executeUpdate();
+                }
 
+                // 2. 存入 DailyFood 表 (紀錄本次進食)
+                String sqlDaily = "INSERT INTO DailyFood (PetID, Calories, RecordDate) VALUES (?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlDaily)) {
+                    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+                    pstmt.setInt(1, selectedPetId);
+                    pstmt.setInt(2, totalCalories);
+                    pstmt.setString(3, today);
                     pstmt.executeUpdate();
                 }
 
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "成功將「" + name + "」加入食物清單！", Toast.LENGTH_SHORT).show();
-                    // 儲存完就關閉，回到「新增額外進食」頁面時，選單就會抓到這筆新資料
+                    Toast.makeText(this, "成功記錄「" + name + "」並加入清單！", Toast.LENGTH_SHORT).show();
+                    setResult(RESULT_OK);
                     finish();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "儲存至清單失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(this, "儲存失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         }).start();
     }

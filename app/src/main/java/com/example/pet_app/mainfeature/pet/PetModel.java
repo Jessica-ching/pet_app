@@ -7,6 +7,7 @@ public class PetModel {
     // 🌟 補上飲水變數
     private int currentWater, goalWater;
     private float weight;
+    private byte[] imageBytes;
     private boolean isExpanded = false;
     private String anomalyMessage = ""; // 🌟 儲存異常訊息
 
@@ -20,6 +21,9 @@ public class PetModel {
 
     public int getId() { return id; }
     public String getName() { return name != null ? name : "未命名"; }
+
+    public byte[] getImageBytes() { return imageBytes; }
+    public void setImageBytes(byte[] imageBytes) { this.imageBytes = imageBytes; }
 
     // 熱量相關
     public int getCurrentCals() { return currentCals; }

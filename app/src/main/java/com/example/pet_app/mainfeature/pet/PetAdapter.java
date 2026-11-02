@@ -1,11 +1,14 @@
 package com.example.pet_app.mainfeature.pet;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -45,6 +48,16 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
         if (pet == null) return;
 
         if (holder.tvPetName != null) holder.tvPetName.setText(pet.getName());
+
+        // 🌟 顯示寵物頭像
+        if (holder.ivPetIcon != null) {
+            if (pet.getImageBytes() != null && pet.getImageBytes().length > 0) {
+                Bitmap bmp = BitmapFactory.decodeByteArray(pet.getImageBytes(), 0, pet.getImageBytes().length);
+                holder.ivPetIcon.setImageBitmap(bmp);
+            } else {
+                holder.ivPetIcon.setImageResource(R.drawable.cat_flower); // 預設圖
+            }
+        }
 
         // 🌟 處理異常標籤
         if (holder.tvPetAnomalyTag != null) {
@@ -126,6 +139,7 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
         ProgressBar pbFood;
         // 🌟 修正：補上飲水進度條
         ProgressBar pbWater;
+        ImageView ivPetIcon;
         View layoutDetail;
         Button btnAddFeeding;
         ImageButton btnSettingsAll;
@@ -136,6 +150,7 @@ public class PetAdapter extends RecyclerView.Adapter<PetAdapter.PetViewHolder> {
             tvFoodStats = itemView.findViewById(R.id.tv_food_stats);
             tvPetAnomalyTag = itemView.findViewById(R.id.tv_pet_anomaly_tag);
             pbFood = itemView.findViewById(R.id.pb_food_daily);
+            ivPetIcon = itemView.findViewById(R.id.iv_pet_icon);
 
             // 🌟 修正：用 findViewById 綁定 item_pet.xml 裡面的飲水 UI 元件
             tvWaterProgress = itemView.findViewById(R.id.tv_water_progress);

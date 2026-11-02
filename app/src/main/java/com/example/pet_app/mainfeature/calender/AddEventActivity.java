@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.pet_app.AlarmHelper;
 import com.example.pet_app.ConnectionHelper;
+import com.example.pet_app.PetDropdownAdapter;
 import com.example.pet_app.R;
 
 import java.sql.Connection;
@@ -33,9 +34,10 @@ public class AddEventActivity extends AppCompatActivity {
 
     private int currentUserId = -1;
     private int selectedPetId = -1; // 儲存選中的寵物 ID
-    private List<PetSimpleModel> userPets = new ArrayList<>();
+    private List<PetDropdownAdapter.PetDropdownModel> userPets = new ArrayList<>();
 
     private TextView tvPetNameInAdd, tvStartDate, tvEndDate, tvTimeRange;
+    private com.google.android.material.imageview.ShapeableImageView ivPetIconInAdd;
     private EditText etEventContent;
     private String selectedCategory = "一般行程"; // 預設分類
 
@@ -51,6 +53,7 @@ public class AddEventActivity extends AppCompatActivity {
 
         // 綁定 UI
         tvPetNameInAdd = findViewById(R.id.tv_pet_name_in_add);
+        ivPetIconInAdd = findViewById(R.id.iv_pet_icon_in_add);
         tvStartDate = findViewById(R.id.tv_start_date);
         tvEndDate = findViewById(R.id.tv_end_date);
         tvTimeRange = findViewById(R.id.tv_time_range);
@@ -120,12 +123,17 @@ public class AddEventActivity extends AppCompatActivity {
     private void fetchUserPets() {
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-                String sql = "SELECT PetID, PetName FROM Pets WHERE UserID = ?";
+                String sql = "SELECT PetID, PetName, Species, Image FROM Pets WHERE UserID = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setInt(1, currentUserId);
                     try (ResultSet rs = pstmt.executeQuery()) {
                         while (rs.next()) {
-                            userPets.add(new PetSimpleModel(rs.getInt("PetID"), rs.getString("PetName")));
+                            userPets.add(new PetDropdownAdapter.PetDropdownModel(
+                                    rs.getInt("PetID"),
+                                    rs.getString("PetName"),
+                                    rs.getString("Species"),
+                                    rs.getBytes("Image")
+                            ));
                         }
                     }
                 }
@@ -134,21 +142,27 @@ public class AddEventActivity extends AppCompatActivity {
     }
 
     private void showPetPopup(View v) {
-        PopupMenu popup = new PopupMenu(this, v);
-        for (PetSimpleModel pet : userPets) {
-            popup.getMenu().add(pet.name);
+        if (userPets.isEmpty()) {
+            Toast.makeText(this, "請先新增寵物", Toast.LENGTH_SHORT).show();
+            return;
         }
-        popup.setOnMenuItemClickListener(item -> {
-            tvPetNameInAdd.setText(item.getTitle());
-            for (PetSimpleModel pet : userPets) {
-                if (pet.name.equals(item.getTitle())) {
+
+        PetDropdownAdapter adapter = new PetDropdownAdapter(this, userPets);
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setAdapter(adapter, (d, which) -> {
+                    PetDropdownAdapter.PetDropdownModel pet = userPets.get(which);
                     selectedPetId = pet.id;
-                    break;
-                }
-            }
-            return true;
-        });
-        popup.show();
+                    tvPetNameInAdd.setText(pet.name);
+                    
+                    if (pet.image != null && pet.image.length > 0) {
+                        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(pet.image, 0, pet.image.length);
+                        ivPetIconInAdd.setImageBitmap(bitmap);
+                    } else {
+                        ivPetIconInAdd.setImageResource(pet.species.contains("貓") ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+                    }
+                })
+                .create();
+        dialog.show();
     }
 
     private void showTimeRangePicker(TextView targetTextView) {
@@ -250,8 +264,4 @@ public class AddEventActivity extends AppCompatActivity {
         }).start();
     }
 
-    static class PetSimpleModel {
-        int id; String name;
-        PetSimpleModel(int id, String name) { this.id = id; this.name = name; }
-    }
 }

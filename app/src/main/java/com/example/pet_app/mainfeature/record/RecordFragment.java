@@ -18,6 +18,7 @@ import androidx.fragment.app.Fragment;
 
 import com.example.pet_app.ConnectionHelper;
 import com.example.pet_app.HomeActivity;
+import com.example.pet_app.PetDropdownAdapter;
 import com.example.pet_app.R;
 import com.google.android.material.imageview.ShapeableImageView;
 
@@ -35,7 +36,7 @@ public class RecordFragment extends Fragment {
 
     private int currentUserId = -1;
     private int selectedPetId = -1; // 當前選中的 PetID
-    private List<PetModel> userPetList = new ArrayList<>();
+    private List<PetDropdownAdapter.PetDropdownModel> userPetList = new ArrayList<>();
 
     public RecordFragment() {}
 
@@ -107,13 +108,18 @@ public class RecordFragment extends Fragment {
 
         new Thread(() -> {
             try (Connection conn = ConnectionHelper.getConnection()) {
-                String sql = "SELECT PetID, PetName, Species FROM Pets WHERE UserID = ?";
+                String sql = "SELECT PetID, PetName, Species, Image FROM Pets WHERE UserID = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setInt(1, currentUserId);
                     try (ResultSet rs = pstmt.executeQuery()) {
-                        List<PetModel> tempList = new ArrayList<>(); // 先存入暫存清單
+                        List<PetDropdownAdapter.PetDropdownModel> tempList = new ArrayList<>(); // 先存入暫存清單
                         while (rs.next()) {
-                            tempList.add(new PetModel(rs.getInt("PetID"), rs.getString("PetName"), rs.getString("Species")));
+                            tempList.add(new PetDropdownAdapter.PetDropdownModel(
+                                rs.getInt("PetID"), 
+                                rs.getString("PetName"), 
+                                rs.getString("Species"),
+                                rs.getBytes("Image")
+                            ));
                         }
 
                         if (getActivity() != null && isAdded()) {
@@ -141,32 +147,30 @@ public class RecordFragment extends Fragment {
             return;
         }
 
-        PopupMenu popup = new PopupMenu(getContext(), anchor);
-        for (PetModel pet : userPetList) {
-            popup.getMenu().add(pet.name);
-        }
-
-        popup.setOnMenuItemClickListener(item -> {
-            for (PetModel pet : userPetList) {
-                if (pet.name.equals(item.getTitle())) {
-                    updateSelectedPetUI(pet);
-                    break;
-                }
-            }
-            return true;
-        });
-        popup.show();
+        PetDropdownAdapter adapter = new PetDropdownAdapter(getContext(), userPetList);
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(getContext())
+                .setTitle("選擇寵物")
+                .setAdapter(adapter, (d, which) -> {
+                    updateSelectedPetUI(userPetList.get(which));
+                })
+                .create();
+        dialog.show();
     }
 
-    private void updateSelectedPetUI(PetModel pet) {
+    private void updateSelectedPetUI(PetDropdownAdapter.PetDropdownModel pet) {
         this.selectedPetId = pet.id;
         tvPetName.setText(pet.name);
 
-        // 根據種類更換預設頭像
-        if (pet.species.contains("貓")) {
-            imgPetAvatar.setImageResource(R.drawable.cat_placeholder);
+        if (pet.image != null && pet.image.length > 0) {
+            android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(pet.image, 0, pet.image.length);
+            imgPetAvatar.setImageBitmap(bitmap);
         } else {
-            imgPetAvatar.setImageResource(R.drawable.dog_placeholder); // 假設你有狗狗圖
+            // 根據種類更換預設頭像
+            if (pet.species.contains("貓")) {
+                imgPetAvatar.setImageResource(R.drawable.cat_placeholder);
+            } else {
+                imgPetAvatar.setImageResource(R.drawable.dog_placeholder);
+            }
         }
 
         // 同步回 Activity (讓 HomeFragment 也能知道切換了)
@@ -175,9 +179,4 @@ public class RecordFragment extends Fragment {
         }
     }
 
-    // 內部簡單模型
-    static class PetModel {
-        int id; String name, species;
-        PetModel(int id, String name, String species) { this.id = id; this.name = name; this.species = species; }
-    }
 }

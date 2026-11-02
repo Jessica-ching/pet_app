@@ -30,6 +30,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> galleryLauncher;
     private ImageView ivPetPhoto;
     private View btnNextStep;
+    private byte[] petImageBytes = null;
 
     // 🌟 破案關鍵：幫元件「正名分家」！
     private EditText etPetName, etPetBirthday;
@@ -72,6 +73,7 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                         if (uri != null) {
                             ivPetPhoto.setImageURI(uri);
                             ivPetPhoto.setPadding(0, 0, 0, 0);
+                            petImageBytes = uriToByteArray(uri);
                         }
                     }
                 }
@@ -193,6 +195,9 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                         intent.putExtra("petBirthday", birthday);
                         intent.putExtra("petGender", gender);
                         intent.putExtra("isSterilized", isSterilizedStr.equals("是"));
+                        if (petImageBytes != null) {
+                            intent.putExtra("petImage", petImageBytes);
+                        }
                         startActivity(intent);
                     }
                 }
@@ -200,10 +205,49 @@ public class CreatePetInfoActivity extends AppCompatActivity {
         }
     }
 
+    private byte[] uriToByteArray(Uri uri) {
+        try {
+            // 1. 取得原始圖片尺寸 (不加載到記憶體)
+            java.io.InputStream input = getContentResolver().openInputStream(uri);
+            android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeStream(input, null, options);
+            input.close();
+
+            // 2. 計算縮放比例 (目標最大邊長 800 像素，避免 Intent 傳輸過大導致崩潰)
+            int maxSide = 800;
+            int inSampleSize = 1;
+            if (options.outHeight > maxSide || options.outWidth > maxSide) {
+                inSampleSize = Math.round((float) Math.max(options.outHeight, options.outWidth) / (float) maxSide);
+            }
+
+            // 3. 真正解碼縮小後的圖片
+            options.inJustDecodeBounds = false;
+            options.inSampleSize = inSampleSize;
+            input = getContentResolver().openInputStream(uri);
+            android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(input, null, options);
+            input.close();
+
+            if (bitmap == null) return null;
+
+            // 4. 壓縮成位元組陣列 (JPEG 70%)
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, baos);
+            byte[] bytes = baos.toByteArray();
+
+            // 釋放 Bitmap 資源
+            bitmap.recycle();
+            return bytes;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private void fetchExistingPetData() {
         new Thread(() -> {
             try (java.sql.Connection conn = com.example.pet_app.ConnectionHelper.getConnection()) {
-                String sql = "SELECT PetName, Species, Birthday, Gender, IsSterilized FROM Pets WHERE PetID = ?";
+                String sql = "SELECT PetName, Species, Birthday, Gender, IsSterilized, Image FROM Pets WHERE PetID = ?";
                 try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setInt(1, petId);
                     try (java.sql.ResultSet rs = pstmt.executeQuery()) {
@@ -213,13 +257,19 @@ public class CreatePetInfoActivity extends AppCompatActivity {
                             String birthday = rs.getString("Birthday");
                             String gender = rs.getString("Gender");
                             boolean spayed = rs.getBoolean("IsSterilized");
+                            byte[] imgBytes = rs.getBytes("Image");
 
                             runOnUiThread(() -> {
                                 etPetName.setText(name);
                                 etPetType.setText(type);
-                                etPetBirthday.setText(birthday.replace("-", "/"));
+                                etPetBirthday.setText(birthday != null ? birthday.replace("-", "/") : "");
                                 etPetGender.setText(gender);
                                 etSpayed.setText(spayed ? "是" : "否");
+                                if (imgBytes != null && imgBytes.length > 0) {
+                                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+                                    ivPetPhoto.setImageBitmap(bitmap);
+                                    ivPetPhoto.setPadding(0, 0, 0, 0);
+                                }
                             });
                         }
                     }
@@ -277,14 +327,24 @@ public class CreatePetInfoActivity extends AppCompatActivity {
     private void updatePetToDB(String name, String type, String birthday, String gender, boolean isSterilized) {
         new Thread(() -> {
             try (java.sql.Connection conn = com.example.pet_app.ConnectionHelper.getConnection()) {
-                String sql = "UPDATE Pets SET PetName=?, Species=?, Birthday=?, Gender=?, IsSterilized=? WHERE PetID=?";
-                try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                StringBuilder sql = new StringBuilder("UPDATE Pets SET PetName=?, Species=?, Birthday=?, Gender=?, IsSterilized=?");
+                if (petImageBytes != null) {
+                    sql.append(", Image=?");
+                }
+                sql.append(" WHERE PetID=?");
+
+                try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
                     pstmt.setString(1, name);
                     pstmt.setString(2, type);
-                    pstmt.setString(3, birthday.replace("/", "-")); // SQL 通常用 -
+                    pstmt.setString(3, birthday.replace("/", "-"));
                     pstmt.setString(4, gender);
                     pstmt.setBoolean(5, isSterilized);
-                    pstmt.setInt(6, petId);
+                    
+                    int nextIdx = 6;
+                    if (petImageBytes != null) {
+                        pstmt.setBytes(nextIdx++, petImageBytes);
+                    }
+                    pstmt.setInt(nextIdx, petId);
 
                     int result = pstmt.executeUpdate();
                     runOnUiThread(() -> {
