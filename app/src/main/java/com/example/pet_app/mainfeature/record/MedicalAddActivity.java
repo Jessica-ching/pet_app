@@ -28,6 +28,7 @@ public class MedicalAddActivity extends AppCompatActivity {
     private int selectedPetId = -1;
     private String selectedPetName; // 🌟 接收名字的變數
     private String selectedDbDate;
+    private com.google.android.material.imageview.ShapeableImageView imgPetAvatar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,18 +42,19 @@ public class MedicalAddActivity extends AppCompatActivity {
 
         // 2. 初始化元件
         TextView tvPetName = findViewById(R.id.tv_pet_name); // 🌟 精準抓取頭像下方的名字 (小花)
+        imgPetAvatar = findViewById(R.id.img_pet_avatar);
         TextView tvDate = findViewById(R.id.tv_medical_date_select);
         Spinner spType = findViewById(R.id.sp_medical_type);
         EditText etNote = findViewById(R.id.et_medical_note);
         Button btnSave = findViewById(R.id.btn_save_medical);
 
-        // 3. 🌟 致命一擊：把頭像下方的「小花」蓋成傳過來的名字！
+        // 3. 🌟 顯示名字與抓取頭像
         if (tvPetName != null && selectedPetName != null) {
             tvPetName.setText(selectedPetName);
         } else if (tvPetName != null) {
-            // 防呆機制：如果真的沒傳到名字，至少顯示未命名，不要再顯示小花了
             tvPetName.setText("未知寵物");
         }
+        fetchPetAvatar();
 
         // 4. 設定 Spinner 選項
         String[] types = {"請選擇醫療類別", "疫苗接種", "手術治療", "例行檢查", "生理量測", "其他紀錄"};
@@ -101,6 +103,32 @@ public class MedicalAddActivity extends AppCompatActivity {
         String uiDate = (year - 1911) + "/" + (month + 1) + "/" + day;
         tv.setText(uiDate);
         selectedDbDate = String.format(Locale.getDefault(), "%d-%02d-%02d", year, (month + 1), day);
+    }
+
+    private void fetchPetAvatar() {
+        if (selectedPetId == -1) return;
+        new Thread(() -> {
+            try (Connection conn = ConnectionHelper.getConnection()) {
+                String sql = "SELECT Species, Image FROM Pets WHERE PetID = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, selectedPetId);
+                    try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                        if (rs.next()) {
+                            String species = rs.getString("Species");
+                            byte[] imgBytes = rs.getBytes("Image");
+                            runOnUiThread(() -> {
+                                if (imgBytes != null && imgBytes.length > 0) {
+                                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+                                    imgPetAvatar.setImageBitmap(bitmap);
+                                } else {
+                                    imgPetAvatar.setImageResource("貓".equals(species) ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        }).start();
     }
 
     private void saveToMSSQL(int petId, String date, String type, String note) {

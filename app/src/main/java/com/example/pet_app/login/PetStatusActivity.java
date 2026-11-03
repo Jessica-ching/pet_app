@@ -59,6 +59,17 @@ public class PetStatusActivity extends AppCompatActivity {
         etPetWeight = findViewById(R.id.etPetWeight);
         tvPetNameBadge.setText(petName);
 
+        // 🌟 顯示頭像
+        com.google.android.material.imageview.ShapeableImageView ivPetPhoto = findViewById(R.id.ivPetPhoto);
+        if (ivPetPhoto != null) {
+            if (petImage != null && petImage.length > 0) {
+                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(petImage, 0, petImage.length);
+                ivPetPhoto.setImageBitmap(bitmap);
+            } else {
+                ivPetPhoto.setImageResource("貓".equals(petSpecies) ? R.drawable.cat_placeholder : R.drawable.dog_placeholder);
+            }
+        }
+
         TextView tvActivityHeader = findViewById(R.id.tvActivityHeader);
         RecyclerView rvActivityList = findViewById(R.id.rvActivityList);
         List<String> activityData = Arrays.asList("低活動量 (靜態/室內)", "中活動量 (一般)", "高活動量 (好動/運動量大)");
